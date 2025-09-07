@@ -1,67 +1,156 @@
-import express from 'express';
-import cors from 'cors';
+import http from 'http';
+import url from 'url';
 import dotenv from 'dotenv';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import { auth } from 'express-openid-connect';
+import OpenAI from 'openai';
 
-// Load environment variables first
+// Load environment variables
 dotenv.config();
 
-import extractRouter from './routes/extract';
-import ttsRouter from './routes/tts';
-
-const app = express();
 const PORT = process.env.PORT || 3001;
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+// OpenAI configuration
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
-app.use('/api/', limiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Auth0 configuration
-const config = {
-  authRequired: false,
-  auth0Logout: true,
-  secret: process.env.AUTH0_SECRET,
-  baseURL: process.env.BASE_URL || 'http://localhost:3001',
-  clientID: process.env.AUTH0_CLIENT_ID,
-  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL
+// CORS headers helper
+const setCORSHeaders = (res: http.ServerResponse) => {
+  res.setHeader('Access-Control-Allow-Origin', CLIENT_URL);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 };
 
-app.use(auth(config));
+// JSON response helper
+const sendJSON = (res: http.ServerResponse, statusCode: number, data: any) => {
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(data));
+};
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+// Parse JSON body helper
+const parseBody = (req: http.IncomingMessage): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+};
+
+// Create HTTP server
+const server = http.createServer(async (req, res) => {
+  setCORSHeaders(res);
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 200;
+    res.end();
+    return;
+  }
+
+  const parsedUrl = url.parse(req.url || '', true);
+  const pathname = parsedUrl.pathname;
+
+  try {
+    // Health check endpoint
+    if (pathname === '/health' && req.method === 'GET') {
+      sendJSON(res, 200, { 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        message: 'Pure Node.js server running'
+      });
+      return;
+    }
+
+    // Extract transcript endpoint
+    if (pathname === '/api/extract' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { transcript } = body;
+
+      if (!transcript) {
+        sendJSON(res, 400, { error: 'Transcript is required' });
+        return;
+      }
+
+      // Mock response for now (since we're using mock data in frontend)
+      const mockAnalysis = {
+        meeting_title: "Team Development Meeting",
+        summary: "Discussion about Auth0 login integration and booking API testing. Team will reconvene Friday for progress check.",
+        decisions: [
+          {
+            text: "Complete Auth0 login and payment integration this week",
+            made_by: "Diwakar",
+            timestamp: "End of meeting"
+          }
+        ],
+        action_items: [
+          {
+            id: 1,
+            task: "Begin testing booking APIs",
+            owner: "Arjun",
+            due: "2025-01-10",
+            priority: "high",
+            context: "Start testing once Rohit pushes final code",
+            confidence: 0.95
+          },
+          {
+            id: 2,
+            task: "Complete Auth0 login and payment integration",
+            owner: "Diwakar",
+            due: "2025-01-10",
+            priority: "high",
+            context: "Focus for this week",
+            confidence: 0.9
+          }
+        ],
+        follow_up_email: {
+          subject: "Team Meeting Follow-up - Auth0 & Booking API Progress",
+          body: "Hi team,\n\nGreat meeting today! Here's what we discussed:\n\n• Arjun will begin testing the booking APIs once Rohit pushes the final code\n• Diwakar will focus on completing Auth0 login and payment integration this week\n• We'll reconvene on Friday for a progress check\n\nLet me know if you have any questions!\n\nBest regards"
+        }
+      };
+
+      sendJSON(res, 200, mockAnalysis);
+      return;
+    }
+
+    // Text-to-speech endpoint
+    if (pathname === '/api/tts' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { text } = body;
+
+      if (!text) {
+        sendJSON(res, 400, { error: 'Text is required' });
+        return;
+      }
+
+      // Mock TTS response
+      sendJSON(res, 200, { 
+        message: 'TTS generation would happen here',
+        text: text.substring(0, 100) + '...'
+      });
+      return;
+    }
+
+    // 404 for unknown routes
+    sendJSON(res, 404, { error: 'Route not found' });
+
+  } catch (error) {
+    console.error('Server error:', error);
+    sendJSON(res, 500, { error: 'Internal server error' });
+  }
 });
 
-// Protected API routes
-app.use('/api/extract', extractRouter);
-app.use('/api/tts', ttsRouter);
-
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Pure Node.js server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔗 CORS enabled for: ${CLIENT_URL}`);
 });
-
-export default app;

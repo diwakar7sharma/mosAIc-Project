@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, User, Flag, Clock, Plus } from 'lucide-react';
+import { X, Calendar, User, Flag, Clock, Plus, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,9 +17,17 @@ interface TaskModalProps {
     priority: 'high' | 'medium' | 'low';
   }) => void;
   initialDescription?: string;
+  initialData?: {
+    title: string;
+    description: string;
+    owner: string;
+    due_date: string;
+    priority: 'high' | 'medium' | 'low';
+  };
+  isEditing?: boolean;
 }
 
-const TaskModal = ({ isOpen, onClose, onSubmit, initialDescription = '' }: TaskModalProps) => {
+const TaskModal = ({ isOpen, onClose, onSubmit, initialDescription = '', initialData, isEditing = false }: TaskModalProps) => {
   const [task, setTask] = useState({
     title: '',
     description: initialDescription,
@@ -27,6 +35,25 @@ const TaskModal = ({ isOpen, onClose, onSubmit, initialDescription = '' }: TaskM
     due_date: '',
     priority: 'medium' as 'high' | 'medium' | 'low'
   });
+
+  // Update form when initialData changes (for editing)
+  useEffect(() => {
+    if (initialData && isEditing) {
+      setTask(initialData);
+      if (initialData.due_date) {
+        setSelectedDate(new Date(initialData.due_date));
+      }
+    } else if (!isEditing) {
+      setTask({
+        title: '',
+        description: initialDescription,
+        owner: '',
+        due_date: '',
+        priority: 'medium'
+      });
+      setSelectedDate(null);
+    }
+  }, [initialData, isEditing, initialDescription]);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -157,11 +184,11 @@ const TaskModal = ({ isOpen, onClose, onSubmit, initialDescription = '' }: TaskM
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-3">
                   <div className="p-3 bg-primary/10 rounded-xl">
-                    <Plus className="w-6 h-6 text-primary" />
+                    {isEditing ? <Edit3 className="w-6 h-6 text-primary" /> : <Plus className="w-6 h-6 text-primary" />}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground">Create New Task</h2>
-                    <p className="text-muted-foreground">Add a new task to your workflow</p>
+                    <h2 className="text-2xl font-bold text-foreground">{isEditing ? 'Edit Task' : 'Create New Task'}</h2>
+                    <p className="text-muted-foreground">{isEditing ? 'Update task details' : 'Add a new task to your workflow'}</p>
                   </div>
                 </div>
                 <Button
@@ -283,8 +310,8 @@ const TaskModal = ({ isOpen, onClose, onSubmit, initialDescription = '' }: TaskM
                     type="submit"
                     className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
                   >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Create Task
+                    {isEditing ? <Edit3 className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                    {isEditing ? 'Update Task' : 'Create Task'}
                   </Button>
                   <Button
                     type="button"

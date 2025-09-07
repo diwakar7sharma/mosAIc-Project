@@ -5,7 +5,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay, type Dra
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, GripVertical, Calendar, User, AlertCircle, Trash2, Sparkles } from 'lucide-react';
+import { Plus, GripVertical, Calendar, User, AlertCircle, Trash2, Sparkles, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { taskService, type Task } from '@/lib/supabaseClient';
@@ -23,7 +23,7 @@ const columns: Column[] = [
   { id: 'Done', title: 'Done', color: 'bg-green-500' },
 ];
 
-const TaskCard = ({ task, onDelete }: { task: Task; onDelete: (id: string) => void }) => {
+const TaskCard = ({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string) => void; onEdit: (task: Task) => void }) => {
   const {
     attributes,
     listeners,
@@ -56,6 +56,15 @@ const TaskCard = ({ task, onDelete }: { task: Task; onDelete: (id: string) => vo
       <div className="flex items-start justify-between mb-2">
         <h4 className="font-semibold text-sm leading-tight flex-1">{task.title}</h4>
         <div className="flex items-center space-x-1 ml-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
+            className="p-1 hover:bg-primary/20 rounded text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Edit3 className="w-3 h-3" />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -104,25 +113,37 @@ const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Load tasks from Supabase
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
       loadTasks();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   const loadTasks = async () => {
     try {
       const userId = user?.email || user?.sub;
-      if (!userId) return;
+      if (!userId) {
+        console.log('No user ID found, skipping task load');
+        setLoading(false);
+        return;
+      }
       
+      console.log('Loading tasks for user:', userId);
       const { data, error } = await taskService.getUserTasks(userId);
-      if (error) throw error;
-      setTasks(data || []);
+      if (error) {
+        console.error('Error loading tasks:', error);
+        setTasks([]);
+      } else {
+        console.log('Tasks loaded:', data);
+        setTasks(data || []);
+      }
     } catch (error) {
       console.error('Error loading tasks:', error);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -148,7 +169,7 @@ const Tasks = () => {
         assigned_to: taskData.owner || user?.name || user?.email || 'Unassigned',
         due_date: taskData.due_date || undefined,
         priority: taskData.priority,
-        status: 'pending' as const,
+        status: 'todo' as const,
       };
 
       const { data, error } = await taskService.createTask(newTaskData);
@@ -159,6 +180,39 @@ const Tasks = () => {
     } catch (error) {
       console.error('Error adding task:', error);
     }
+  };
+
+  const editTask = async (taskData: {
+    title: string;
+    description: string;
+    owner: string;
+    due_date: string;
+    priority: 'high' | 'medium' | 'low';
+  }) => {
+    if (!editingTask || !taskData.title.trim()) return;
+
+    try {
+      const updates = {
+        title: taskData.title,
+        description: taskData.description,
+        assigned_to: taskData.owner,
+        due_date: taskData.due_date || undefined,
+        priority: taskData.priority,
+      };
+
+      const { data, error } = await taskService.updateTask(editingTask.id, updates);
+      if (error) throw error;
+      if (data) {
+        setTasks((prev) => prev.map(task => task.id === editingTask.id ? data : task));
+      }
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
   };
 
 
@@ -227,10 +281,17 @@ const Tasks = () => {
   const getTasksByStatus = (status: string) => {
     const statusMap: { [key: string]: Task['status'] } = {
       'To Do': 'todo',
-      'In Progress': 'in_progress',
+      'In Progress': 'in_progress', 
       'Done': 'done',
     };
-    return tasks.filter((task) => task.status === statusMap[status]);
+    // Also handle legacy 'pending' status
+    const legacyStatusMap: { [key: string]: Task['status'][] } = {
+      'To Do': ['todo', 'pending'],
+      'In Progress': ['in_progress'],
+      'Done': ['done'],
+    };
+    const allowedStatuses = legacyStatusMap[status] || [statusMap[status]];
+    return tasks.filter((task) => allowedStatuses.includes(task.status));
   };
 
   if (loading) {
@@ -241,6 +302,21 @@ const Tasks = () => {
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Loading tasks...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen pt-24 pb-12 px-4 bg-background">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-foreground mb-4">Please Log In</h2>
+              <p className="text-muted-foreground">You need to be authenticated to view and manage tasks.</p>
             </div>
           </div>
         </div>
@@ -282,6 +358,21 @@ const Tasks = () => {
             initialDescription=""
           />
 
+          <TaskModal
+            isOpen={!!editingTask}
+            onClose={() => setEditingTask(null)}
+            onSubmit={editTask}
+            initialDescription={editingTask?.description || ""}
+            initialData={editingTask ? {
+              title: editingTask.title,
+              description: editingTask.description || '',
+              owner: editingTask.assigned_to || '',
+              due_date: editingTask.due_date || '',
+              priority: editingTask.priority
+            } : undefined}
+            isEditing={true}
+          />
+
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {columns.map((column) => (
@@ -305,7 +396,7 @@ const Tasks = () => {
                         <div className="space-y-3 min-h-[200px] group">
                           {getTasksByStatus(column.id).map((task) => (
                             <div key={task.id} className="group">
-                              <TaskCard task={task} onDelete={deleteTask} />
+                              <TaskCard task={task} onDelete={deleteTask} onEdit={handleEditTask} />
                             </div>
                           ))}
                           {getTasksByStatus(column.id).length === 0 && (
@@ -323,7 +414,7 @@ const Tasks = () => {
 
             <DragOverlay>
               {activeTask ? (
-                <TaskCard task={activeTask} onDelete={() => {}} />
+                <TaskCard task={activeTask} onDelete={() => {}} onEdit={() => {}} />
               ) : null}
             </DragOverlay>
           </DndContext>

@@ -58,6 +58,17 @@ export interface MeetingInsight {
   created_at: string;
 }
 
+export interface UserMetrics {
+  id: string;
+  user_id: string;
+  transcripts_analyzed: number;
+  ai_insights_generated: number;
+  hours_saved: number;
+  tasks_created: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Task Management Functions
 export const taskService = {
   // Create a new task
@@ -118,6 +129,44 @@ export const taskService = {
     }
   },
 
+  // Update entire task
+  async updateTask(taskId: string, updates: Partial<Omit<Task, 'id' | 'created_at' | 'user_id'>>) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .update({ 
+          ...updates,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', taskId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error updating task:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Get single task by ID
+  async getTask(taskId: string) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId)
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error fetching task:', error);
+      return { data: null, error };
+    }
+  },
+
   // Delete a task
   async deleteTask(taskId: string) {
     try {
@@ -146,9 +195,36 @@ export const taskService = {
         .select();
 
       if (error) throw error;
+      
+      // Update task count metrics
+      if (data && data.length > 0) {
+        const userId = tasks[0]?.user_id;
+        if (userId) {
+          await metricsService.incrementMetric(userId, 'tasks_created', data.length);
+        }
+      }
+      
       return { data, error: null };
     } catch (error) {
       console.error('Error creating multiple tasks:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Create single task with metrics update
+  async createTaskWithMetrics(taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) {
+    try {
+      const { data, error } = await this.createTask(taskData);
+      if (error) throw error;
+      
+      // Update task count metrics
+      if (data) {
+        await metricsService.incrementMetric(taskData.user_id, 'tasks_created', 1);
+      }
+      
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error creating task with metrics:', error);
       return { data: null, error };
     }
   }
@@ -249,6 +325,102 @@ export const insightService = {
   }
 };
 
+// User Metrics Functions
+export const metricsService = {
+  // Get or create user metrics
+  async getUserMetrics(userId: string) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('user_metrics')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // No metrics found, create new record
+        const newMetrics = {
+          user_id: userId,
+          transcripts_analyzed: 0,
+          ai_insights_generated: 0,
+          hours_saved: 0,
+          tasks_created: 0
+        };
+        
+        const { data: createdData, error: createError } = await supabaseClient
+          .from('user_metrics')
+          .insert([newMetrics])
+          .select()
+          .single();
+        
+        if (createError) throw createError;
+        return { data: createdData, error: null };
+      }
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error fetching user metrics:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Update user metrics
+  async updateMetrics(userId: string, updates: Partial<Omit<UserMetrics, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('user_metrics')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error updating metrics:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Increment specific metrics
+  async incrementMetric(userId: string, metric: 'transcripts_analyzed' | 'ai_insights_generated' | 'tasks_created', amount: number = 1) {
+    try {
+      // Get current metrics
+      const { data: currentMetrics } = await this.getUserMetrics(userId);
+      if (!currentMetrics) throw new Error('Failed to get current metrics');
+
+      const updates = {
+        [metric]: currentMetrics[metric] + amount
+      };
+
+      return await this.updateMetrics(userId, updates);
+    } catch (error) {
+      console.error(`Error incrementing ${metric}:`, error);
+      return { data: null, error };
+    }
+  },
+
+  // Add hours saved
+  async addHoursSaved(userId: string, hours: number) {
+    try {
+      const { data: currentMetrics } = await this.getUserMetrics(userId);
+      if (!currentMetrics) throw new Error('Failed to get current metrics');
+
+      const updates = {
+        hours_saved: currentMetrics.hours_saved + hours
+      };
+
+      return await this.updateMetrics(userId, updates);
+    } catch (error) {
+      console.error('Error adding hours saved:', error);
+      return { data: null, error };
+    }
+  }
+};
+
 // Health check function
 export const checkSupabaseConnection = async (): Promise<boolean> => {
   try {
@@ -262,6 +434,40 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
     console.error('Supabase connection test failed:', error);
     return false;
   }
+};
+
+// Real-time subscription for tasks
+export const subscribeToUserTasks = (userId: string, callback: (payload: any) => void) => {
+  return supabaseClient
+    .channel('user-tasks')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'tasks',
+        filter: `user_id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe();
+};
+
+// Real-time subscription for user metrics
+export const subscribeToUserMetrics = (userId: string, callback: (payload: any) => void) => {
+  return supabaseClient
+    .channel('user-metrics')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'user_metrics',
+        filter: `user_id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe();
 };
 
 export default supabaseClient;

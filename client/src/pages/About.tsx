@@ -27,7 +27,7 @@ const About = () => {
   ];
 
   const technologies = [
-    { name: 'OpenAI GPT-4', description: 'For intelligent text analysis and extraction' },
+    { name: 'Google Gemini', description: 'For intelligent text analysis and extraction' },
     { name: 'ElevenLabs', description: 'For high-quality voice synthesis' },
     { name: 'Auth0', description: 'For secure authentication and user management' },
     { name: 'React & TypeScript', description: 'For a modern, type-safe frontend experience' },
@@ -190,7 +190,7 @@ const About = () => {
           <div className="mt-16 text-center">
             <h3 className="text-xl font-semibold mb-4 text-foreground">Powered By</h3>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-foreground">
-              <span>OpenAI GPT-4</span>
+              <span>Google Gemini</span>
               <span className="text-primary">•</span>
               <span>ElevenLabs Voice AI</span>
               <span className="text-primary">•</span>

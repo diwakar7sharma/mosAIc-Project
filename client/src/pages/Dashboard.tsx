@@ -1,24 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { motion } from 'framer-motion';
-import { Upload, FileText, Brain, Mail, Play, Copy, Mic, BarChart3, Clock, Users, Zap, Plus } from 'lucide-react';
+import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { analyzeTranscript, generateVoiceSummary, type ActionItem } from '@/services/api';
+import { taskService, metricsService, type UserMetrics, subscribeToUserMetrics } from '@/lib/supabaseClient';
+import { calculateTimeSaved, extractMeetingDuration } from '@/utils/timeCalculations';
 import SpeechWaveAnimation from '@/components/SpeechWaveAnimation';
-import { transcriptService, taskService, insightService, type Transcript } from '@/lib/supabaseClient';
-import { analyzeTranscript, generateVoiceSummary } from '@/services/api';
-
-interface ActionItem {
-  id: number;
-  task: string;
-  owner: string;
-  due: string;
-  priority: string;
-  context: string;
-  confidence: number;
-}
 
 interface Decision {
   text: string;
@@ -38,130 +29,196 @@ interface ExtractedData {
 }
 
 const Dashboard = () => {
-  const { isAuthenticated, loginWithRedirect, user } = useAuth0();
+  const { isAuthenticated, user } = useAuth0();
   const [transcript, setTranscript] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [analysis, setAnalysis] = useState<ExtractedData | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [generatingAudio, setGeneratingAudio] = useState(false);
   const [emailBody, setEmailBody] = useState('');
-  const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
-  const [, setTranscripts] = useState<Transcript[]>([]);
-  const [userStats, setUserStats] = useState({
-    transcriptsAnalyzed: 0,
-    insightsGenerated: 0,
-    hoursSaved: 0,
-    teamMembers: 1
-  });
+  const [userStats, setUserStats] = useState<UserMetrics | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated && user?.sub) {
-      loadUserData();
+    if (isAuthenticated && user) {
+      loadUserMetrics();
+      loadPersistedState();
+      
+      // Set up real-time metrics subscription
+      const userId = user?.email || user?.sub;
+      if (userId) {
+        const subscription = subscribeToUserMetrics(userId, (payload) => {
+          console.log('Metrics updated:', payload);
+          // Reload metrics when they change
+          loadUserMetrics();
+        });
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+      }
     }
   }, [isAuthenticated, user]);
 
-  const loadUserData = async () => {
+  // Save state to localStorage whenever key values change (but not on initial load)
+  useEffect(() => {
+    if (isAuthenticated && user && (transcript || extractedData || analysis || audioUrl || emailBody)) {
+      saveStateToStorage();
+    }
+  }, [transcript, extractedData, analysis, audioUrl, emailBody]);
+
+  const loadPersistedState = () => {
     try {
       const userId = user?.email || user?.sub;
       if (!userId) return;
       
-      const { data: transcriptsData } = await transcriptService.getUserTranscripts(userId);
-      if (transcriptsData) {
-        setTranscripts(transcriptsData);
-        setUserStats({
-          transcriptsAnalyzed: transcriptsData.length,
-          insightsGenerated: transcriptsData.filter((t: Transcript) => t.processed).length,
-          hoursSaved: Math.round(transcriptsData.length * 2.5), // Estimate 2.5 hours saved per transcript
-          teamMembers: 1
-        });
+      const savedState = localStorage.getItem(`dashboard_state_${userId}`);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        
+        // Only restore if there's actual data to restore
+        if (state.transcript || state.extractedData || state.analysis || state.audioUrl || state.emailBody) {
+          setTranscript(state.transcript || '');
+          setExtractedData(state.extractedData || null);
+          setAnalysis(state.analysis || null);
+          setAudioUrl(state.audioUrl || null);
+          setEmailBody(state.emailBody || '');
+          console.log('Dashboard state restored from localStorage:', state);
+        }
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error loading persisted state:', error);
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>
-              Please log in to access the dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => loginWithRedirect()}>
-              Log In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const saveStateToStorage = () => {
+    try {
+      const userId = user?.email || user?.sub;
+      if (!userId) return;
+      
+      const state = {
+        transcript,
+        extractedData,
+        analysis,
+        audioUrl,
+        emailBody,
+        timestamp: Date.now()
+      };
+      
+      // Only save if there's actual content to save
+      if (transcript || extractedData || analysis || audioUrl || emailBody) {
+        localStorage.setItem(`dashboard_state_${userId}`, JSON.stringify(state));
+        console.log('Dashboard state saved to localStorage');
+      }
+    } catch (error) {
+      console.error('Error saving state to localStorage:', error);
+    }
+  };
+
+  const loadUserMetrics = async () => {
+    try {
+      const userId = user?.email || user?.sub;
+      if (!userId) return;
+      
+      const { data, error } = await metricsService.getUserMetrics(userId);
+      if (error) {
+        console.error('Error loading user metrics:', error);
+      } else {
+        setUserStats(data);
+      }
+    } catch (error) {
+      console.error('Error loading user metrics:', error);
+    }
+  };
 
   const handleExtract = async () => {
     if (!transcript.trim()) return;
 
     setIsLoading(true);
     try {
-      // Store transcript in Supabase
       const userId = user?.email || user?.sub;
-      if (!userId) throw new Error('User not authenticated');
-      
-      const { data: transcriptData, error: transcriptError } = await transcriptService.createTranscript({
-        user_id: userId,
-        content: transcript,
-        processed: false
-      });
+      if (!userId) {
+        console.error('User not authenticated');
+        return;
+      }
 
-      if (transcriptError || !transcriptData) throw transcriptError;
-
-      // Analyze transcript with OpenAI
       console.log('Starting transcript analysis...');
-      const analysis = await analyzeTranscript(transcript);
+      const userInfo = {
+        name: user?.name || user?.given_name || user?.nickname || 'User',
+        email: user?.email || ''
+      };
+      const analysis = await analyzeTranscript(transcript, userInfo);
       console.log('Analysis completed:', analysis);
       
-      // Store insights in Supabase
-      const { error: insightError } = await insightService.createInsight({
-        transcript_id: transcriptData.id,
-        user_id: userId,
-        summary: analysis.summary,
-        decisions: analysis.decisions,
-        action_items: analysis.action_items,
-        follow_up_email: analysis.follow_up_email
-      });
-
-      if (insightError) throw insightError;
-
-      // Update transcript as processed
-      await transcriptService.markTranscriptProcessed(transcriptData.id);
-
-      setExtractedData(analysis);
-      setEmailBody(analysis.follow_up_email.body);
+      // Check if AI detected this is not a real transcript
+      if ((analysis as any).error === 'not_a_transcript') {
+        alert('This doesn\'t appear to be a meeting transcript with conversations between people. Please try with an actual meeting transcript.');
+        return;
+      }
       
-      // Refresh user data
-      await loadUserData();
+      // Calculate time saved
+      const meetingDuration = extractMeetingDuration(transcript);
+      const timeCalc = calculateTimeSaved(transcript, meetingDuration || undefined);
+      
+      // Add 2-3 second delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      setExtractedData(analysis);
+      setAnalysis(analysis);
+      setEmailBody(analysis.follow_up_email?.body || '');
+      
+      // Update metrics in Supabase
+      try {
+        await metricsService.incrementMetric(userId, 'transcripts_analyzed', 1);
+        await metricsService.incrementMetric(userId, 'ai_insights_generated', 1);
+        await metricsService.addHoursSaved(userId, timeCalc.totalTimeSaved);
+        
+        // Reload metrics to update UI
+        await loadUserMetrics();
+      } catch (metricsError) {
+        console.error('Error updating metrics:', metricsError);
+      }
+      
     } catch (error) {
-      console.error('Error extracting data:', error);
-      alert('Failed to extract meeting insights. Please try again.');
+      console.error('Error analyzing transcript:', error);
+      alert('Failed to analyze transcript. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGenerateVoice = async () => {
-    if (!extractedData?.summary) return;
-
-    setIsGeneratingVoice(true);
+  const handleGenerateAudio = async () => {
+    if (!analysis?.summary) return;
+    
+    setGeneratingAudio(true);
     try {
-      const audioBlob = await generateVoiceSummary(extractedData.summary);
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.play();
+      const audioUrl = await generateVoiceSummary(analysis.summary);
+      if (audioUrl !== 'https://example.com/mock-audio.mp3') {
+        setAudioUrl(audioUrl);
+      }
     } catch (error) {
-      console.error('Error generating voice:', error);
-      alert('Failed to generate voice summary. Please try again.');
+      console.error('Error generating audio:', error);
     } finally {
-      setIsGeneratingVoice(false);
+      setGeneratingAudio(false);
+    }
+  };
+
+  const handleReset = () => {
+    setTranscript('');
+    setExtractedData(null);
+    setAnalysis(null);
+    setAudioUrl(null);
+    setEmailBody('');
+    
+    // Clear persisted state from localStorage
+    try {
+      const userId = user?.email || user?.sub;
+      if (userId) {
+        localStorage.removeItem(`dashboard_state_${userId}`);
+        console.log('Dashboard state cleared from localStorage');
+      }
+    } catch (error) {
+      console.error('Error clearing persisted state:', error);
     }
   };
 
@@ -173,7 +230,10 @@ const Dashboard = () => {
   const handleAddTasksToBoard = async (actionItems: ActionItem[]) => {
     try {
       const userId = user?.email || user?.sub;
-      if (!userId) return;
+      if (!userId) {
+        console.error('User not authenticated');
+        return;
+      }
       
       const tasksToAdd = actionItems.map(item => ({
         user_id: userId,
@@ -182,24 +242,79 @@ const Dashboard = () => {
         assigned_to: item.owner,
         due_date: item.due || new Date().toISOString().split('T')[0],
         priority: item.priority.toLowerCase() as 'high' | 'medium' | 'low',
-        status: 'pending' as const
+        status: 'todo' as const
       }));
 
-      const { error } = await taskService.createMultipleTasks(tasksToAdd);
-      if (error) throw error;
+      console.log('Adding tasks to board:', tasksToAdd);
 
-      alert(`Successfully added ${actionItems.length} tasks to your task board!`);
+      // Add tasks to Supabase (this will automatically update metrics)
+      try {
+        console.log('Creating multiple tasks:', tasksToAdd);
+        const { data, error } = await taskService.createMultipleTasks(tasksToAdd);
+        if (error) {
+          console.error('Error adding tasks to database:', error);
+          alert(`Failed to add tasks: ${(error as any)?.message || JSON.stringify(error)}`);
+          return;
+        }
+        console.log('Tasks created successfully:', data);
+        
+        // Reload metrics to update UI
+        await loadUserMetrics();
+        
+        alert(`✅ Successfully added ${actionItems.length} tasks to your task board!\n\nCheck the Tasks page to see them.`);
+      } catch (dbError) {
+        console.error('Error adding tasks to database:', dbError);
+        alert('Failed to add tasks to board. Please try again.');
+      }
+      
     } catch (error) {
       console.error('Error adding tasks to board:', error);
       alert('Failed to add tasks to board. Please try again.');
     }
   };
 
+  const handleAddSingleTask = async (actionItem: ActionItem) => {
+    try {
+      const userId = user?.email || user?.sub;
+      if (!userId) {
+        console.error('User not authenticated');
+        return;
+      }
+      
+      const taskData = {
+        user_id: userId,
+        title: actionItem.task,
+        description: actionItem.context || '',
+        assigned_to: actionItem.owner,
+        due_date: actionItem.due || new Date().toISOString().split('T')[0],
+        priority: actionItem.priority.toLowerCase() as 'high' | 'medium' | 'low',
+        status: 'todo' as const
+      };
+
+      console.log('Creating task with data:', taskData);
+      const { data, error } = await taskService.createTaskWithMetrics(taskData);
+      if (error) {
+        console.error('Error adding task:', error);
+        alert(`Failed to add task: ${(error as any)?.message || JSON.stringify(error)}`);
+        return;
+      }
+      console.log('Task created successfully:', data);
+      
+      // Reload metrics to update UI
+      await loadUserMetrics();
+      
+      alert(`✅ Task "${actionItem.task}" added to your task board!`);
+    } catch (error) {
+      console.error('Error adding single task:', error);
+      alert('Failed to add task. Please try again.');
+    }
+  };
+
   const statsData = [
-    { icon: FileText, label: 'Transcripts Analyzed', value: userStats.transcriptsAnalyzed.toString(), color: 'text-blue-400' },
-    { icon: Brain, label: 'AI Insights Generated', value: userStats.insightsGenerated.toString(), color: 'text-purple-400' },
-    { icon: Clock, label: 'Hours Saved', value: userStats.hoursSaved.toString(), color: 'text-green-400' },
-    { icon: Users, label: 'Team Members', value: userStats.teamMembers.toString(), color: 'text-orange-400' },
+    { icon: FileText, label: 'Transcripts Analyzed', value: userStats?.transcripts_analyzed?.toString() || '0', color: 'text-blue-400' },
+    { icon: BarChart3, label: 'AI Insights Generated', value: userStats?.ai_insights_generated?.toString() || '0', color: 'text-green-400' },
+    { icon: Clock, label: 'Hours Saved', value: userStats?.hours_saved?.toString() || '0', color: 'text-purple-400' },
+    { icon: CheckCircle, label: 'Tasks Created', value: userStats?.tasks_created?.toString() || '0', color: 'text-orange-400' }
   ];
 
   return (
@@ -276,24 +391,35 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                     </div>
                   )}
                 </div>
-                <Button 
-                  onClick={handleExtract}
-                  disabled={!transcript.trim() || isLoading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <Brain className="mr-2 animate-spin" size={16} />
-                      Analyzing with AI...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2" size={16} />
-                      Extract AI Insights
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleExtract}
+                    disabled={!transcript.trim() || isLoading}
+                    className="flex-1"
+                    size="lg"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Brain className="mr-2 animate-spin" size={16} />
+                        Analyzing with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2" size={16} />
+                        Extract AI Insights
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={handleReset}
+                    disabled={isLoading}
+                    variant="outline"
+                    size="lg"
+                    className="px-4"
+                  >
+                    <RotateCcw size={16} />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -306,7 +432,7 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                     AI-Generated Insights
                   </CardTitle>
                   <CardDescription>
-                    Comprehensive analysis powered by GPT-4
+                    Comprehensive analysis powered by Gemini
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -329,23 +455,37 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={handleGenerateVoice}
-                        disabled={isGeneratingVoice}
+                        onClick={() => copyToClipboard(analysis?.summary || '')}
+                        className="flex-1"
                       >
-                        {isGeneratingVoice ? (
-                          <>
-                            <Play className="mr-2 animate-pulse" size={14} />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Play className="mr-2" size={14} />
-                            Voice Summary
-                          </>
-                        )}
+                        <Copy className="mr-2" size={16} />
+                        Copy
                       </Button>
                     </div>
-                    <p className="text-sm bg-background p-4 rounded border leading-relaxed">{extractedData.summary}</p>
+                    <p className="text-sm bg-background p-4 rounded border leading-relaxed">{analysis?.summary}</p>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        onClick={() => copyToClipboard(analysis?.summary || '')}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        <Copy className="mr-1" size={12} />
+                        Copy
+                      </Button>
+                      {audioUrl && (
+                        <div className="flex items-center gap-2">
+                          <audio 
+                            controls 
+                            src={audioUrl}
+                            className="h-8 text-xs"
+                            style={{ width: '200px' }}
+                          >
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Decisions */}
@@ -382,13 +522,23 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                     <BarChart3 size={24} className="text-primary" />
                     Action Items ({extractedData.action_items.length})
                   </div>
-                  <Button
-                    onClick={() => handleAddTasksToBoard(extractedData.action_items)}
-                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add to Task Board
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleAddTasksToBoard(analysis?.action_items || [])}
+                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <Plus className="mr-2" size={16} />
+                      Add Tasks to Board
+                    </Button>
+                    <Button
+                      onClick={handleGenerateAudio}
+                      disabled={generatingAudio}
+                      className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <Mic className="mr-2" size={16} />
+                      {generatingAudio ? 'Generating...' : 'Generate Audio'}
+                    </Button>
+                  </div>
                 </CardTitle>
                 <CardDescription>
                   AI-extracted tasks and assignments from your meeting
@@ -427,6 +577,16 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                           💡 {item.context}
                         </p>
                       )}
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          onClick={() => handleAddSingleTask(item)}
+                          size="sm"
+                          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                        >
+                          <Plus className="mr-1" size={14} />
+                          Add Task
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

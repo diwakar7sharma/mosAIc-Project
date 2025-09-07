@@ -27,7 +27,7 @@
 ### Backend
 - **Node.js** with Express and TypeScript
 - **Auth0** for authentication middleware
-- **OpenAI GPT-4** for transcript analysis
+- **Google Gemini** for transcript analysis
 - **ElevenLabs** for text-to-speech
 - **CORS** and security middleware
 
@@ -93,7 +93,7 @@ VITE_AUTH0_CLIENT_ID=your-auth0-client-id
 
 The OpenAI and ElevenLabs API keys are already configured in the server/.env file:
 
-- **OpenAI API Key**: Already set for GPT-4 access
+- **Gemini API Key**: Already set for Gemini access
 - **ElevenLabs API Key**: Already set with Voice ID `bIHbv24MWmeRgasZH58o`
 
 ### 5. Run the Application
@@ -222,7 +222,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **OpenAI** for GPT-4 API
+- **Google** for Gemini API
 - **ElevenLabs** for voice synthesis
 - **Auth0** for authentication services
 - **Vercel** for deployment platform
