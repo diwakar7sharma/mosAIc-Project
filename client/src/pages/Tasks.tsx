@@ -8,7 +8,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Plus, GripVertical, Calendar, User, AlertCircle, Trash2, Sparkles, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { taskService, type Task } from '@/lib/supabaseClient';
+import { taskService, type Task } from '@/lib/mongoClient';
 import TaskModal from '@/components/TaskModal';
 
 interface Column {
@@ -30,7 +30,7 @@ const TaskCard = ({ task, onDelete, onEdit }: { task: Task; onDelete: (id: strin
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id || task._id || '' });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -68,7 +68,7 @@ const TaskCard = ({ task, onDelete, onEdit }: { task: Task; onDelete: (id: strin
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete(task.id);
+              onDelete(task.id || task._id || '');
             }}
             className="p-1 hover:bg-destructive/20 rounded text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
           >
@@ -172,13 +172,19 @@ const Tasks = () => {
         status: 'todo' as const,
       };
 
+      console.log('Creating task with data:', newTaskData);
       const { data, error } = await taskService.createTask(newTaskData);
-      if (error) throw error;
+      if (error) {
+        console.error('Task creation error:', error);
+        throw error;
+      }
       if (data) {
+        console.log('Task created successfully:', data);
         setTasks((prev) => [data, ...prev]);
       }
     } catch (error) {
       console.error('Error adding task:', error);
+      alert('Failed to create task. Please try again.');
     }
   };
 
@@ -200,10 +206,10 @@ const Tasks = () => {
         priority: taskData.priority,
       };
 
-      const { data, error } = await taskService.updateTask(editingTask.id, updates);
+      const { data, error } = await taskService.updateTask(editingTask.id || editingTask._id || '', updates);
       if (error) throw error;
       if (data) {
-        setTasks((prev) => prev.map(task => task.id === editingTask.id ? data : task));
+        setTasks((prev) => prev.map(task => (task.id || task._id) === (editingTask.id || editingTask._id) ? data : task));
       }
       setEditingTask(null);
     } catch (error) {
@@ -220,7 +226,7 @@ const Tasks = () => {
     try {
       const { error } = await taskService.deleteTask(taskId);
       if (error) throw error;
-      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      setTasks((prev) => prev.filter((task) => (task.id || task._id) !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);
     }
@@ -231,7 +237,7 @@ const Tasks = () => {
       const { error } = await taskService.updateTaskStatus(taskId, newStatus);
       if (error) throw error;
       setTasks((prev) =>
-        prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task))
+        prev.map((task) => ((task.id || task._id) === taskId ? { ...task, status: newStatus } : task))
       );
     } catch (error) {
       console.error('Error updating task:', error);
@@ -247,7 +253,7 @@ const Tasks = () => {
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveTask(tasks.find(task => task.id === event.active.id) || null);
+    setActiveTask(tasks.find(task => (task.id || task._id) === event.active.id) || null);
   };
 
   const handleDragEnd = (event: any) => {
@@ -255,7 +261,7 @@ const Tasks = () => {
 
     if (!over) return;
 
-    const activeTask = tasks.find((task) => task.id === active.id);
+    const activeTask = tasks.find((task) => (task.id || task._id) === active.id);
     if (!activeTask) return;
 
     let newStatus: Task['status'];
@@ -274,7 +280,7 @@ const Tasks = () => {
     }
 
     if (activeTask.status !== newStatus) {
-      updateTaskStatus(active.id, newStatus);
+      updateTaskStatus(activeTask.id || activeTask._id || active.id, newStatus);
     }
   };
 
@@ -392,7 +398,7 @@ const Tasks = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <SortableContext items={getTasksByStatus(column.id).map((task) => task.id)} strategy={verticalListSortingStrategy}>
+                      <SortableContext items={getTasksByStatus(column.id).map((task) => task.id || task._id || '')} strategy={verticalListSortingStrategy}>
                         <div className="space-y-3 min-h-[200px] group">
                           {getTasksByStatus(column.id).map((task) => (
                             <div key={task.id} className="group">

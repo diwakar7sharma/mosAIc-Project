@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { analyzeTranscript, generateVoiceSummary, type ActionItem } from '@/services/api';
-import { taskService, metricsService, type UserMetrics, subscribeToUserMetrics } from '@/lib/supabaseClient';
+import { taskService, metricsService, type UserMetrics, subscribeToUserMetrics } from '@/lib/mongoClient';
 import { calculateTimeSaved, extractMeetingDuration } from '@/utils/timeCalculations';
 import SpeechWaveAnimation from '@/components/SpeechWaveAnimation';
 

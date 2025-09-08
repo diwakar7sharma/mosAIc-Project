@@ -2,11 +2,20 @@ import http from 'http';
 import url from 'url';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
+import { connectDB } from './config/database';
+import { handleTaskRoutes } from './routes/tasks';
+import { handleMetricsRoutes } from './routes/metrics';
+import { handleTranscriptRoutes } from './routes/transcripts';
+import { handleInsightRoutes } from './routes/insights';
+import { sendJSON, parseBody } from './utils/helpers';
 
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 3001;
+// Connect to MongoDB
+connectDB();
+
+const PORT = process.env.PORT || 3003;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // OpenAI configuration
@@ -17,33 +26,9 @@ const openai = new OpenAI({
 // CORS headers helper
 const setCORSHeaders = (res: http.ServerResponse) => {
   res.setHeader('Access-Control-Allow-Origin', CLIENT_URL);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-};
-
-// JSON response helper
-const sendJSON = (res: http.ServerResponse, statusCode: number, data: any) => {
-  res.statusCode = statusCode;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(data));
-};
-
-// Parse JSON body helper
-const parseBody = (req: http.IncomingMessage): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    req.on('end', () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
 };
 
 // Create HTTP server
@@ -58,7 +43,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   const parsedUrl = url.parse(req.url || '', true);
-  const pathname = parsedUrl.pathname;
+  const pathname = parsedUrl.pathname || '';
 
   try {
     // Health check endpoint
@@ -66,12 +51,18 @@ const server = http.createServer(async (req, res) => {
       sendJSON(res, 200, { 
         status: 'OK', 
         timestamp: new Date().toISOString(),
-        message: 'Pure Node.js server running'
+        message: 'MongoDB server running'
       });
       return;
     }
 
-    // Extract transcript endpoint
+    // Route handlers
+    if (await handleTaskRoutes(req, res, pathname)) return;
+    if (await handleMetricsRoutes(req, res, pathname)) return;
+    if (await handleTranscriptRoutes(req, res, pathname)) return;
+    if (await handleInsightRoutes(req, res, pathname)) return;
+
+    // Extract transcript endpoint (legacy - keeping for compatibility)
     if (pathname === '/api/extract' && req.method === 'POST') {
       const body = await parseBody(req);
       const { transcript } = body;
@@ -81,7 +72,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // Mock response for now (since we're using mock data in frontend)
+      // Mock response for now (since we're using Gemini API in frontend)
       const mockAnalysis = {
         meeting_title: "Team Development Meeting",
         summary: "Discussion about Auth0 login integration and booking API testing. Team will reconvene Friday for progress check.",
