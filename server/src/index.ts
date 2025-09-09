@@ -64,54 +64,11 @@ const server = http.createServer(async (req, res) => {
     if (await handleInsightRoutes(req, res, pathname)) return;
     if (await handleUserDataRoutes(req, res, pathname)) return;
 
-    // Extract transcript endpoint (legacy - keeping for compatibility)
+    // Extract transcript endpoint (deprecated - analysis now handled in frontend)
     if (pathname === '/api/extract' && req.method === 'POST') {
-      const body = await parseBody(req);
-      const { transcript } = body;
-
-      if (!transcript) {
-        sendJSON(res, 400, { error: 'Transcript is required' });
-        return;
-      }
-
-      // Mock response for now (since we're using Gemini API in frontend)
-      const mockAnalysis = {
-        meeting_title: "Team Development Meeting",
-        summary: "Discussion about Auth0 login integration and booking API testing. Team will reconvene Friday for progress check.",
-        decisions: [
-          {
-            text: "Complete Auth0 login and payment integration this week",
-            made_by: "Diwakar",
-            timestamp: "End of meeting"
-          }
-        ],
-        action_items: [
-          {
-            id: 1,
-            task: "Begin testing booking APIs",
-            owner: "Arjun",
-            due: "2025-01-10",
-            priority: "high",
-            context: "Start testing once Rohit pushes final code",
-            confidence: 0.95
-          },
-          {
-            id: 2,
-            task: "Complete Auth0 login and payment integration",
-            owner: "Diwakar",
-            due: "2025-01-10",
-            priority: "high",
-            context: "Focus for this week",
-            confidence: 0.9
-          }
-        ],
-        follow_up_email: {
-          subject: "Team Meeting Follow-up - Auth0 & Booking API Progress",
-          body: "Hi team,\n\nGreat meeting today! Here's what we discussed:\n\n• Arjun will begin testing the booking APIs once Rohit pushes the final code\n• Diwakar will focus on completing Auth0 login and payment integration this week\n• We'll reconvene on Friday for a progress check\n\nLet me know if you have any questions!\n\nBest regards"
-        }
-      };
-
-      sendJSON(res, 200, mockAnalysis);
+      sendJSON(res, 410, { 
+        error: 'This endpoint is deprecated. Please use the frontend Gemini API integration for transcript analysis.' 
+      });
       return;
     }
 
