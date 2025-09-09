@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, FileText, Brain, Eye, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { ChevronLeft, ChevronRight, MessageSquare, Sparkles, Clock, FileText, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { transcriptService, insightService } from '@/lib/mongoClient';
 
@@ -27,6 +26,7 @@ interface MeetingInsight {
   id?: string;
   meeting_title: string;
   summary: string;
+  key_takeaways: string[];
   user_id: string;
   created_at?: string;
   decisions?: Array<{
@@ -78,10 +78,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSessio
       ]);
 
       if (transcriptsResult.data) {
-        setTranscripts(transcriptsResult.data.slice(0, 5)); // Show last 5
+        // Sort by creation date, most recent first
+        const sortedTranscripts = transcriptsResult.data
+          .sort((a: Transcript, b: Transcript) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+          .slice(0, 10); // Show last 10
+        setTranscripts(sortedTranscripts);
       }
       if (insightsResult.data) {
-        setInsights(insightsResult.data.slice(0, 5)); // Show last 5
+        // Sort by creation date, most recent first
+        const sortedInsights = insightsResult.data
+          .sort((a: MeetingInsight, b: MeetingInsight) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+          .slice(0, 10); // Show last 10
+        setInsights(sortedInsights);
       }
     } catch (error) {
       console.error('Error loading sidebar data:', error);
@@ -92,47 +100,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSessio
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Unknown date';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 168) { // Less than a week
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
   };
 
-  const truncateText = (text: string, maxLength: number) => {
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  const truncateTitle = (title: string, maxLength: number = 30) => {
+    return title.length > maxLength ? title.substring(0, maxLength) + '...' : title;
   };
 
   const handleTranscriptClick = async (transcript: Transcript) => {
     if (onResumeSession && transcript.session_state) {
-      onResumeSession(transcript.session_state);
+      onResumeSession({
+        ...transcript.session_state,
+        transcript: transcript.content // Include original transcript
+      });
+      onToggle(); // Close sidebar after selection
     }
   };
 
-  const handleInsightClick = async (insight: MeetingInsight) => {
-    if (onResumeSession) {
-      // Convert insight back to session format
-      const sessionData = {
-        extractedData: {
-          meeting_title: insight.meeting_title,
-          summary: insight.summary,
-          decisions: insight.decisions,
-          action_items: insight.action_items,
-          follow_up_email: insight.follow_up_email
-        },
-        analysis: {
-          meeting_title: insight.meeting_title,
-          summary: insight.summary,
-          decisions: insight.decisions,
-          action_items: insight.action_items,
-          follow_up_email: insight.follow_up_email
-        },
-        emailBody: insight.follow_up_email?.body || ''
-      };
-      onResumeSession(sessionData);
-    }
-  };
+  // AI Insights are display-only, no session restoration needed
 
   return (
     <motion.div
@@ -181,123 +176,102 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSessio
             exit={{ opacity: 0, x: -20 }}
             className="p-4 pt-12 h-full overflow-y-auto scrollbar-hide"
           >
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Recent Transcripts */}
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <FileText size={16} className="text-primary" />
+                <h3 className="text-sm font-medium text-muted-foreground mb-3 px-2">
                   Recent Transcripts
                 </h3>
                 {loading ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />
+                      <div key={i} className="h-10 bg-accent/30 rounded-lg animate-pulse mx-2" />
                     ))}
                   </div>
                 ) : transcripts.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {transcripts.map((transcript) => (
-                      <Card key={transcript.id || transcript._id} className="bg-accent/50 hover:bg-accent transition-colors cursor-pointer">
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between mb-1">
-                            <h4 className="text-xs font-medium text-foreground truncate flex-1">
-                              {transcript.title || 'Meeting Transcript'}
-                            </h4>
-                            <Button variant="ghost" size="sm" className="h-4 w-4 p-0 ml-1">
-                              <Eye size={10} />
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            {truncateText(transcript.content, 60)}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock size={10} />
+                      <div
+                        key={transcript.id || transcript._id}
+                        onClick={() => handleTranscriptClick(transcript)}
+                        className="mx-2 p-3 rounded-lg hover:bg-accent/50 cursor-pointer transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <MessageSquare size={16} className="text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {truncateTitle(transcript.title || 'Meeting Transcript')}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
                               {formatDate(transcript.created_at)}
-                            </span>
+                            </p>
                           </div>
-                          <div 
-                            className="bg-background/60 backdrop-blur-sm p-2 rounded text-xs leading-relaxed cursor-pointer hover:bg-background/80 transition-colors"
-                            onClick={() => handleTranscriptClick(transcript)}
-                          >
-                            <p className="font-medium text-foreground mb-1">{transcript.title || 'Untitled Meeting'}</p>
-                            <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
-                              <Eye size={10} />
-                              <span>{formatDate(transcript.created_at)}</span>
-                              <Clock size={10} />
-                              <span>{formatDate(transcript.created_at)}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground text-center py-4 bg-accent/30 rounded-lg">
+                  <div className="text-xs text-muted-foreground text-center py-6 mx-2">
                     No transcripts yet
                   </div>
                 )}
               </div>
 
-              {/* Recent Insights */}
+              {/* AI Insights */}
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Brain size={16} className="text-primary" />
+                <h3 className="text-sm font-medium text-muted-foreground mb-3 px-2">
                   AI Insights
                 </h3>
                 {loading ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />
+                      <div key={i} className="h-16 bg-accent/30 rounded-lg animate-pulse mx-2" />
                     ))}
                   </div>
                 ) : insights.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {insights.map((insight) => (
-                      <Card key={insight.id || insight._id} className="bg-accent/50 hover:bg-accent transition-colors cursor-pointer">
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between mb-1">
-                            <h4 className="text-xs font-medium text-foreground truncate flex-1">
-                              {insight.meeting_title}
-                            </h4>
-                            <Button variant="ghost" size="sm" className="h-4 w-4 p-0 ml-1">
-                              <Eye size={10} />
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            {truncateText(insight.summary, 60)}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock size={10} />
-                              {formatDate(insight.created_at)}
-                            </span>
-                          </div>
-                          <div 
-                            className="bg-background/60 backdrop-blur-sm p-2 rounded text-xs leading-relaxed cursor-pointer hover:bg-background/80 transition-colors"
-                            onClick={() => handleInsightClick(insight)}
-                          >
-                            <p className="font-medium text-foreground mb-1">{insight.meeting_title}</p>
-                            <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
-                              <Eye size={10} />
-                              <span>{formatDate(insight.created_at)}</span>
-                              <Clock size={10} />
-                              <span>{formatDate(insight.created_at)}</span>
+                      <div
+                        key={insight.id || insight._id}
+                        className="mx-2 p-3 rounded-lg bg-accent/20 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <Sparkles size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground mb-1 truncate">
+                              {truncateTitle(insight.meeting_title)}
+                            </p>
+                            <div className="space-y-1">
+                              {insight.key_takeaways?.slice(0, 3).map((takeaway, index) => (
+                                <p key={index} className="text-xs text-muted-foreground leading-relaxed">
+                                  • {takeaway.length > 60 ? takeaway.substring(0, 60) + '...' : takeaway}
+                                </p>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-1 mt-2">
+                              <Clock size={10} className="text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {formatDate(insight.created_at)}
+                              </p>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground text-center py-4 bg-accent/30 rounded-lg">
+                  <div className="text-xs text-muted-foreground text-center py-6 mx-2">
                     No insights yet
                   </div>
                 )}
               </div>
 
-              {/* Storage Notice */}
-              <p className="text-[10px] text-muted-foreground/60 text-center mt-2">· recent progress ·</p>
+              {/* Footer */}
+              <div className="border-t border-border/50 pt-4 mt-6">
+                <p className="text-[10px] text-muted-foreground/60 text-center px-2">
+                  Click any item to restore session
+                </p>
+              </div>
             </div>
           </motion.div>
         )}

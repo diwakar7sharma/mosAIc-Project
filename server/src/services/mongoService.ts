@@ -138,8 +138,39 @@ export class InsightService {
   }
 }
 
+// User Data Cleanup Service
+export class UserDataService {
+  async clearAllUserData(userId: string): Promise<{ success: boolean; deletedCounts: any }> {
+    try {
+      const results = await Promise.all([
+        Task.deleteMany({ user_id: userId }),
+        UserMetrics.deleteMany({ user_id: userId }),
+        Transcript.deleteMany({ user_id: userId }),
+        MeetingInsight.deleteMany({ user_id: userId })
+      ]);
+
+      return {
+        success: true,
+        deletedCounts: {
+          tasks: results[0].deletedCount,
+          metrics: results[1].deletedCount,
+          transcripts: results[2].deletedCount,
+          insights: results[3].deletedCount
+        }
+      };
+    } catch (error) {
+      console.error('Error clearing user data:', error);
+      return {
+        success: false,
+        deletedCounts: null
+      };
+    }
+  }
+}
+
 // Export service instances
 export const taskService = new TaskService();
 export const metricsService = new MetricsService();
 export const transcriptService = new TranscriptService();
 export const insightService = new InsightService();
+export const userDataService = new UserDataService();

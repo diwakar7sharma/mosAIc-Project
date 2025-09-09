@@ -63,7 +63,7 @@ const Home = () => {
               ) : (
                 <Button 
                   size="lg" 
-                  className="text-lg px-8 py-6"
+                  className="text-lg px-8 py-6 text-black"
                   onClick={() => loginWithRedirect()}
                 >
                   Get Started <ArrowRight className="ml-2" size={20} />
@@ -128,7 +128,7 @@ const Home = () => {
             {!isAuthenticated && (
               <Button 
                 size="lg" 
-                className="text-lg px-8 py-6"
+                className="text-lg px-8 py-6 text-black"
                 onClick={() => loginWithRedirect()}
               >
                 Start Free Today <ArrowRight className="ml-2" size={20} />

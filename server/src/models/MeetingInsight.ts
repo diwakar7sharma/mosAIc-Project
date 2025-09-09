@@ -4,6 +4,7 @@ export interface IMeetingInsight extends Document {
   transcript_id: string;
   meeting_title: string;
   summary: string;
+  key_takeaways: string[];
   decisions: Array<{
     text: string;
     made_by: string;
@@ -40,6 +41,9 @@ const MeetingInsightSchema: Schema = new Schema({
     type: String,
     required: true
   },
+  key_takeaways: [{
+    type: String
+  }],
   decisions: [{
     text: String,
     made_by: String,
@@ -69,5 +73,8 @@ const MeetingInsightSchema: Schema = new Schema({
 
 // Index for efficient user queries
 MeetingInsightSchema.index({ user_id: 1, created_at: -1 });
+
+// Add text index for search functionality
+MeetingInsightSchema.index({ meeting_title: 'text', key_takeaways: 'text' });
 
 export const MeetingInsight = mongoose.model<IMeetingInsight>('MeetingInsight', MeetingInsightSchema);

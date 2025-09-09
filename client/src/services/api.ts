@@ -2,6 +2,50 @@
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
+// ElevenLabs API Configuration
+const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
+const ELEVENLABS_VOICE_ID = import.meta.env.VITE_ELEVENLABS_VOICE_ID || 'XrExE9yKIg1WjnnlVkGX';
+const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
+
+// ElevenLabs Text-to-Speech Function
+export async function generateSpeech(text: string): Promise<string | null> {
+  try {
+    console.log('Generating speech with ElevenLabs API...');
+    
+    if (!ELEVENLABS_API_KEY) {
+      console.warn('ElevenLabs API key not found');
+      return null;
+    }
+
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
+    }
+
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    return audioUrl;
+  } catch (error) {
+    console.error('Error generating speech with ElevenLabs:', error);
+    return null;
+  }
+}
 
 // Types
 export interface ActionItem {

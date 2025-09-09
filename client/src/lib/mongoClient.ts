@@ -1,5 +1,5 @@
 // MongoDB client for frontend - API calls to server
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Database Types
 export interface Task {
@@ -39,6 +39,12 @@ export interface Transcript {
   user_id: string;
   created_at?: string;
   updated_at?: string;
+  session_state?: {
+    extractedData?: any;
+    analysis?: any;
+    audioUrl?: string;
+    emailBody?: string;
+  };
 }
 
 export interface MeetingInsight {
@@ -47,6 +53,7 @@ export interface MeetingInsight {
   transcript_id: string;
   meeting_title: string;
   summary: string;
+  key_takeaways: string[]; // Only store key takeaways for sidebar
   decisions: Array<{
     text: string;
     made_by: string;
@@ -229,7 +236,7 @@ export class TranscriptService {
     };
   }) {
     try {
-      const response = await fetch(`${API_BASE_URL}/transcripts`, {
+      const response = await fetch(`${API_BASE_URL}/api/transcripts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -299,8 +306,7 @@ export const transcriptService = new TranscriptService();
 export const insightService = new InsightService();
 
 // Mock subscription function for compatibility
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const subscribeToUserMetrics = (userId: string, callback: (payload: any) => void) => {
+export const subscribeToUserMetrics = (_userId: string, _callback: (payload: any) => void) => {
   // For MongoDB, we'll implement polling or WebSocket later
   // For now, return a mock subscription
   return {

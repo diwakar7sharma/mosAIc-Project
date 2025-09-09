@@ -7,6 +7,7 @@ import { handleTaskRoutes } from './routes/tasks';
 import { handleMetricsRoutes } from './routes/metrics';
 import { handleTranscriptRoutes } from './routes/transcripts';
 import { handleInsightRoutes } from './routes/insights';
+import { handleUserDataRoutes } from './routes/userdata';
 import { sendJSON, parseBody } from './utils/helpers';
 
 // Load environment variables
@@ -61,6 +62,7 @@ const server = http.createServer(async (req, res) => {
     if (await handleMetricsRoutes(req, res, pathname)) return;
     if (await handleTranscriptRoutes(req, res, pathname)) return;
     if (await handleInsightRoutes(req, res, pathname)) return;
+    if (await handleUserDataRoutes(req, res, pathname)) return;
 
     // Extract transcript endpoint (legacy - keeping for compatibility)
     if (pathname === '/api/extract' && req.method === 'POST') {

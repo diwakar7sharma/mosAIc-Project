@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw, AlertTriangle } from 'lucide-react';
+import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw, AlertTriangle, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { analyzeTranscript, type ActionItem } from '@/services/api';
+import { analyzeTranscript, generateSpeech, type ActionItem } from '@/services/api';
 import { taskService, metricsService, transcriptService, insightService, type UserMetrics, subscribeToUserMetrics } from '@/lib/mongoClient';
 import { calculateTimeSaved, extractMeetingDuration } from '@/utils/timeCalculations';
 import SpeechWaveAnimation from '@/components/SpeechWaveAnimation';
@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [emailBody, setEmailBody] = useState('');
   const [userStats, setUserStats] = useState<UserMetrics | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [isGeneratingSpeech, setIsGeneratingSpeech] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -184,12 +185,19 @@ const Dashboard = () => {
           };
           await transcriptService.createTranscript(transcriptData);
           
+          // Extract key takeaways from summary and decisions
+          const keyTakeaways = [
+            analysis.summary.split('.').slice(0, 2).join('.') + '.', // First 2 sentences of summary
+            ...analysis.decisions.slice(0, 2).map(d => d.text) // First 2 decisions
+          ].filter(takeaway => takeaway.trim().length > 0);
+
           // Save insights
           const insightData = {
             user_id: userId,
             transcript_id: 'temp', // We'll update this later when we have proper IDs
             meeting_title: analysis.meeting_title,
             summary: analysis.summary,
+            key_takeaways: keyTakeaways,
             decisions: analysis.decisions,
             action_items: analysis.action_items,
             follow_up_email: analysis.follow_up_email
@@ -238,6 +246,27 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error clearing persisted state:', error);
+    }
+  };
+
+  const handleGenerateSpeech = async () => {
+    if (!analysis?.summary) return;
+    
+    setIsGeneratingSpeech(true);
+    try {
+      const audioUrl = await generateSpeech(analysis.summary);
+      if (audioUrl) {
+        // Create audio element and play immediately
+        const audio = new Audio(audioUrl);
+        audio.play();
+      } else {
+        alert('Failed to generate speech. Please check your ElevenLabs API key.');
+      }
+    } catch (error) {
+      console.error('Error generating speech:', error);
+      alert('Failed to generate speech. Please try again.');
+    } finally {
+      setIsGeneratingSpeech(false);
     }
   };
 
@@ -467,14 +496,23 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                 <div className="flex gap-2">
                   <Button 
                     onClick={handleExtract}
-                    disabled={!transcript.trim() || isLoading}
-                    className="flex-1"
+                    disabled={!transcript.trim() || isLoading || !!extractedData}
+                    className={`flex-1 ${
+                      extractedData 
+                        ? 'bg-black hover:bg-black text-gray-400 cursor-not-allowed' 
+                        : ''
+                    }`}
                     size="lg"
                   >
                     {isLoading ? (
                       <>
                         <Brain className="mr-2 animate-spin" size={16} />
                         Analyzing with AI...
+                      </>
+                    ) : extractedData ? (
+                      <>
+                        <Brain className="mr-2" size={16} />
+                        Analysis Complete
                       </>
                     ) : (
                       <>
@@ -527,18 +565,32 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                       </h3>
                     </div>
                     <div className="relative bg-background p-4 rounded border border-green-500/30 backdrop-blur-sm">
-                      <p className="text-sm leading-relaxed pr-8">{analysis?.summary}</p>
-                      <button
-                        onClick={() => copyToClipboard(analysis?.summary || '', 'summary')}
-                        className="absolute top-2 right-2 p-1 hover:bg-accent rounded transition-colors"
-                        title="Copy to clipboard"
-                      >
-                        {copiedStates['summary'] ? (
-                          <CheckCircle size={16} className="text-green-600" />
-                        ) : (
-                          <Copy size={16} className="text-muted-foreground hover:text-foreground" />
-                        )}
-                      </button>
+                      <p className="text-sm leading-relaxed pr-16">{analysis?.summary}</p>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <button
+                          onClick={handleGenerateSpeech}
+                          disabled={isGeneratingSpeech}
+                          className="p-1 hover:bg-accent rounded transition-colors"
+                          title="Play speech"
+                        >
+                          {isGeneratingSpeech ? (
+                            <Brain size={16} className="text-primary animate-spin" />
+                          ) : (
+                            <Volume2 size={16} className="text-muted-foreground hover:text-foreground" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(analysis?.summary || '', 'summary')}
+                          className="p-1 hover:bg-accent rounded transition-colors"
+                          title="Copy to clipboard"
+                        >
+                          {copiedStates['summary'] ? (
+                            <CheckCircle size={16} className="text-green-600" />
+                          ) : (
+                            <Copy size={16} className="text-muted-foreground hover:text-foreground" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <div className="flex gap-2 mt-2">
                     </div>
