@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { analyzeTranscript, generateVoiceSummary, type ActionItem } from '@/services/api';
+import { analyzeTranscript, type ActionItem } from '@/services/api';
 import { taskService, metricsService, transcriptService, insightService, type UserMetrics, subscribeToUserMetrics } from '@/lib/mongoClient';
 import { calculateTimeSaved, extractMeetingDuration } from '@/utils/timeCalculations';
 import SpeechWaveAnimation from '@/components/SpeechWaveAnimation';
@@ -35,8 +35,8 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [analysis, setAnalysis] = useState<ExtractedData | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [tasksAdded, setTasksAdded] = useState(false);
+  const [addedTaskIds, setAddedTaskIds] = useState<Set<string>>(new Set());
   const [emailBody, setEmailBody] = useState('');
   const [userStats, setUserStats] = useState<UserMetrics | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -64,10 +64,10 @@ const Dashboard = () => {
 
   // Save state to localStorage whenever key values change (but not on initial load)
   useEffect(() => {
-    if (isAuthenticated && user && (transcript || extractedData || analysis || audioUrl || emailBody)) {
+    if (isAuthenticated && user && (transcript || extractedData || analysis || emailBody)) {
       saveStateToStorage();
     }
-  }, [transcript, extractedData, analysis, audioUrl, emailBody]);
+  }, [transcript, extractedData, analysis, emailBody]);
 
   const loadPersistedState = () => {
     try {
@@ -79,11 +79,10 @@ const Dashboard = () => {
         const state = JSON.parse(savedState);
         
         // Only restore if there's actual data to restore
-        if (state.transcript || state.extractedData || state.analysis || state.audioUrl || state.emailBody) {
+        if (state.transcript || state.extractedData || state.analysis || state.emailBody) {
           setTranscript(state.transcript || '');
           setExtractedData(state.extractedData || null);
           setAnalysis(state.analysis || null);
-          setAudioUrl(state.audioUrl || null);
           setEmailBody(state.emailBody || '');
           console.log('Dashboard state restored from localStorage:', state);
         }
@@ -102,13 +101,12 @@ const Dashboard = () => {
         transcript,
         extractedData,
         analysis,
-        audioUrl,
         emailBody,
         timestamp: Date.now()
       };
       
       // Only save if there's actual content to save
-      if (transcript || extractedData || analysis || audioUrl || emailBody) {
+      if (transcript || extractedData || analysis || emailBody) {
         localStorage.setItem(`dashboard_state_${userId}`, JSON.stringify(state));
         console.log('Dashboard state saved to localStorage');
       }
@@ -172,12 +170,17 @@ const Dashboard = () => {
       // Save transcript and insights to MongoDB if user is authenticated
       if (isAuthenticated && userId) {
         try {
-          // Save transcript
+          // Save transcript with full session state
           const transcriptData = {
             user_id: userId,
             title: analysis.meeting_title,
             content: transcript,
-            summary: analysis.summary
+            summary: analysis.summary,
+            session_state: {
+              extractedData: analysis,
+              analysis: analysis,
+              emailBody: analysis.follow_up_email?.body || ''
+            }
           };
           await transcriptService.createTranscript(transcriptData);
           
@@ -219,27 +222,11 @@ const Dashboard = () => {
     }
   };
 
-  const handleGenerateAudio = async () => {
-    if (!analysis?.summary) return;
-    
-    setGeneratingAudio(true);
-    try {
-      const audioUrl = await generateVoiceSummary(analysis.summary);
-      if (audioUrl !== 'https://example.com/mock-audio.mp3') {
-        setAudioUrl(audioUrl);
-      }
-    } catch (error) {
-      console.error('Error generating audio:', error);
-    } finally {
-      setGeneratingAudio(false);
-    }
-  };
 
   const handleReset = () => {
     setTranscript('');
     setExtractedData(null);
     setAnalysis(null);
-    setAudioUrl(null);
     setEmailBody('');
     
     // Clear persisted state from localStorage
@@ -254,9 +241,26 @@ const Dashboard = () => {
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const handleResumeSession = (sessionData: any) => {
+    if (sessionData.extractedData) {
+      setExtractedData(sessionData.extractedData);
+      setAnalysis(sessionData.analysis || sessionData.extractedData);
+      setEmailBody(sessionData.emailBody || sessionData.extractedData?.follow_up_email?.body || '');
+      // Optionally set transcript if available
+      if (sessionData.transcript) {
+        setTranscript(sessionData.transcript);
+      }
+    }
+  };
+
+  const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({});
+
+  const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
+    setCopiedStates(prev => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopiedStates(prev => ({ ...prev, [key]: false }));
+    }, 2000);
   };
 
   const handleAddTasksToBoard = async (actionItems: ActionItem[]) => {
@@ -293,15 +297,13 @@ const Dashboard = () => {
         // Reload metrics to update UI
         await loadUserMetrics();
         
-        alert(`✅ Successfully added ${actionItems.length} tasks to your task board!\n\nCheck the Tasks page to see them.`);
+        setTasksAdded(true);
       } catch (dbError) {
         console.error('Error adding tasks to database:', dbError);
-        alert('Failed to add tasks to board. Please try again.');
       }
       
     } catch (error) {
       console.error('Error adding tasks to board:', error);
-      alert('Failed to add tasks to board. Please try again.');
     }
   };
 
@@ -335,10 +337,9 @@ const Dashboard = () => {
       // Reload metrics to update UI
       await loadUserMetrics();
       
-      alert(`✅ Task "${actionItem.task}" added to your task board!`);
+      setAddedTaskIds(prev => new Set(prev).add(actionItem.task));
     } catch (error) {
       console.error('Error adding single task:', error);
-      alert('Failed to add task. Please try again.');
     }
   };
 
@@ -351,7 +352,7 @@ const Dashboard = () => {
 
   // Non-authenticated user warning
   const UnauthenticatedWarning = () => (
-    <Card className="mb-8 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
+    <Card className="mb-8 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-green-500/30 backdrop-blur-sm">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           <AlertTriangle className="text-yellow-500 mt-1 flex-shrink-0" size={24} />
@@ -393,15 +394,12 @@ const Dashboard = () => {
         <Sidebar 
           isCollapsed={isSidebarCollapsed} 
           onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onResumeSession={handleResumeSession}
         />
       )}
       
-      <div className="container mx-auto px-4 pt-20 pb-8 max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+      <div className={`container mx-auto px-4 pt-20 pb-8 max-w-7xl transition-all duration-200 ${!isSidebarCollapsed ? 'blur-sm' : ''}`}>
+        <div>
           <div className="text-center mb-6">
             <h1 className="text-4xl font-bold mb-4 text-foreground">
               Meeting Dashboard
@@ -417,16 +415,11 @@ const Dashboard = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 max-w-6xl mx-auto">
-            {statsData.map((stat, index) => {
+            {statsData.map((stat) => {
               const Icon = stat.icon;
               return (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                >
-                  <Card className="bg-card border-border hover:bg-accent/50 transition-all duration-300">
+                <div key={stat.label}>
+                  <Card className="bg-card border border-green-500/30 backdrop-blur-sm hover:bg-accent/50 transition-all duration-300">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -437,14 +430,14 @@ const Dashboard = () => {
                       </div>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </div>
               );
             })}
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
             {/* Input Section */}
-            <Card className="bg-card border-border">
+            <Card className="bg-card border border-green-500/30 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload size={24} className="text-primary" />
@@ -463,10 +456,10 @@ Example:
 Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah agreed to coordinate with the marketing team for the new campaign launch."
                     value={transcript}
                     onChange={(e) => setTranscript(e.target.value)}
-                    className="min-h-[300px] resize-none bg-input border-border focus:ring-2 focus:ring-primary"
+                    className="min-h-[300px] resize-none bg-input border border-green-500/30 backdrop-blur-sm focus:ring-2 focus:ring-primary"
                   />
                   {transcript.length > 0 && (
-                    <div className="absolute bottom-2 right-2 text-xs text-muted-foreground bg-background px-2 py-1 rounded border">
+                    <div className="absolute bottom-2 right-2 text-xs text-muted-foreground bg-background px-2 py-1 rounded border border-green-500/30 backdrop-blur-sm">
                       {transcript.length} characters
                     </div>
                   )}
@@ -505,7 +498,7 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
 
             {/* Results Section */}
             {extractedData && (
-              <Card className="bg-card border-border">
+              <Card className="bg-card border border-green-500/30 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 size={24} className="text-primary" />
@@ -517,67 +510,50 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Meeting Title */}
-                  <div className="bg-accent p-4 rounded-lg border border-border">
+                  <div className="bg-accent p-4 rounded-lg border border-green-500/30 backdrop-blur-sm">
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       <Mic size={18} className="text-primary" />
                       Meeting Title
                     </h3>
-                    <p className="text-sm bg-background p-3 rounded border font-medium">{extractedData.meeting_title}</p>
+                    <p className="text-sm bg-background p-3 rounded border border-green-500/30 backdrop-blur-sm font-medium">{extractedData.meeting_title}</p>
                   </div>
 
                   {/* Summary */}
-                  <div className="bg-accent p-4 rounded-lg border border-border">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="bg-accent p-4 rounded-lg border border-green-500/30 backdrop-blur-sm">
+                    <div className="mb-3">
                       <h3 className="font-semibold flex items-center gap-2">
                         <Brain size={18} className="text-primary" />
                         AI Summary
                       </h3>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyToClipboard(analysis?.summary || '')}
-                        className="flex-1"
-                      >
-                        <Copy className="mr-2" size={16} />
-                        Copy
-                      </Button>
                     </div>
-                    <p className="text-sm bg-background p-4 rounded border leading-relaxed">{analysis?.summary}</p>
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        onClick={() => copyToClipboard(analysis?.summary || '')}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
+                    <div className="relative bg-background p-4 rounded border border-green-500/30 backdrop-blur-sm">
+                      <p className="text-sm leading-relaxed pr-8">{analysis?.summary}</p>
+                      <button
+                        onClick={() => copyToClipboard(analysis?.summary || '', 'summary')}
+                        className="absolute top-2 right-2 p-1 hover:bg-accent rounded transition-colors"
+                        title="Copy to clipboard"
                       >
-                        <Copy className="mr-1" size={12} />
-                        Copy
-                      </Button>
-                      {audioUrl && (
-                        <div className="flex items-center gap-2">
-                          <audio 
-                            controls 
-                            src={audioUrl}
-                            className="h-8 text-xs"
-                            style={{ width: '200px' }}
-                          >
-                            Your browser does not support the audio element.
-                          </audio>
-                        </div>
-                      )}
+                        {copiedStates['summary'] ? (
+                          <CheckCircle size={16} className="text-green-600" />
+                        ) : (
+                          <Copy size={16} className="text-muted-foreground hover:text-foreground" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex gap-2 mt-2">
                     </div>
                   </div>
 
                   {/* Decisions */}
                   {extractedData.decisions.length > 0 && (
-                    <div className="bg-accent p-4 rounded-lg border border-border">
+                    <div className="bg-accent p-4 rounded-lg border border-green-500/30 backdrop-blur-sm">
                       <h3 className="font-semibold mb-3 flex items-center gap-2">
                         <FileText size={18} className="text-primary" />
                         Key Decisions ({extractedData.decisions.length})
                       </h3>
                       <div className="space-y-3">
                         {extractedData.decisions.map((decision, index) => (
-                          <div key={index} className="bg-background p-4 rounded border">
+                          <div key={index} className="bg-background p-4 rounded border border-green-500/30 backdrop-blur-sm">
                             <p className="font-medium mb-2">{decision.text}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span>👤 {decision.made_by}</span>
@@ -595,7 +571,7 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
 
           {/* Action Items */}
           {extractedData?.action_items && extractedData.action_items.length > 0 && (
-            <Card className="mt-8 bg-card border-border">
+            <Card className="mt-8 bg-card border border-green-500/30 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -605,18 +581,21 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleAddTasksToBoard(analysis?.action_items || [])}
-                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      disabled={tasksAdded}
+                      className={`shadow-lg hover:shadow-xl transition-all duration-200 ${
+                        tasksAdded 
+                          ? 'bg-green-600 text-white cursor-not-allowed' 
+                          : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white'
+                      }`}
                     >
-                      <Plus className="mr-2" size={16} />
-                      Add Tasks to Board
-                    </Button>
-                    <Button
-                      onClick={handleGenerateAudio}
-                      disabled={generatingAudio}
-                      className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                    >
-                      <Mic className="mr-2" size={16} />
-                      {generatingAudio ? 'Generating...' : 'Generate Audio'}
+                      {tasksAdded ? (
+                        <div className="mr-2">
+                          ✓
+                        </div>
+                      ) : (
+                        <Plus className="mr-2" size={16} />
+                      )}
+                      {tasksAdded ? 'Tasks Added to Board' : 'Add All Tasks to Board'}
                     </Button>
                   </div>
                 </CardTitle>
@@ -627,13 +606,13 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
               <CardContent>
                 <div className="grid gap-4">
                   {extractedData.action_items.map((item) => (
-                    <div key={item.id} className="bg-accent p-4 rounded-lg border border-border">
+                    <div key={item.id} className="bg-accent p-4 rounded-lg border border-green-500/30 backdrop-blur-sm">
                       <div className="flex items-start justify-between mb-3">
                         <h4 className="font-semibold flex-1 pr-4">{item.task}</h4>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          item.priority === 'High' ? 'bg-destructive/20 text-destructive border border-destructive/30' :
-                          item.priority === 'Medium' ? 'bg-primary/20 text-primary border border-primary/30' :
-                          'bg-secondary/20 text-secondary-foreground border border-secondary/30'
+                          item.priority === 'High' || item.priority === 'high' ? 'bg-red-500/20 text-red-400 border border-red-500/30 backdrop-blur-sm' :
+                          item.priority === 'Medium' || item.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 backdrop-blur-sm' :
+                          'bg-green-500/20 text-green-400 border border-green-500/30 backdrop-blur-sm'
                         }`}>
                           {item.priority}
                         </span>
@@ -653,18 +632,29 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                         </div>
                       </div>
                       {item.context && (
-                        <p className="text-xs text-muted-foreground mt-2 bg-background p-2 rounded border">
+                        <p className="text-xs text-muted-foreground mt-2 bg-background p-2 rounded border border-green-500/30 backdrop-blur-sm">
                           💡 {item.context}
                         </p>
                       )}
                       <div className="mt-3 flex justify-end">
                         <Button
                           onClick={() => handleAddSingleTask(item)}
+                          disabled={addedTaskIds.has(item.task)}
                           size="sm"
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                          className={`shadow-md hover:shadow-lg transition-all duration-200 ${
+                            addedTaskIds.has(item.task)
+                              ? 'bg-green-600 text-white cursor-not-allowed'
+                              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
+                          }`}
                         >
-                          <Plus className="mr-1" size={14} />
-                          Add Task
+                          {addedTaskIds.has(item.task) ? (
+                            <div className="mr-1">
+                              ✓
+                            </div>
+                          ) : (
+                            <Plus className="mr-1" size={14} />
+                          )}
+                          {addedTaskIds.has(item.task) ? 'Added' : 'Add Task'}
                         </Button>
                       </div>
                     </div>
@@ -676,7 +666,7 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
 
           {/* Follow-up Email */}
           {extractedData?.follow_up_email && (
-            <Card className="mt-8 bg-card border-border">
+            <Card className="mt-8 bg-card border border-green-500/30 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mail size={24} className="text-primary" />
@@ -687,20 +677,20 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="bg-accent p-4 rounded-lg border border-border">
+                <div className="bg-accent p-4 rounded-lg border border-green-500/30 backdrop-blur-sm">
                   <label className="text-sm font-medium mb-2 block">📧 Subject Line:</label>
                   <Input 
                     value={extractedData.follow_up_email.subject}
                     readOnly
-                    className="bg-background border-border"
+                    className="bg-background border border-green-500/30 backdrop-blur-sm"
                   />
                 </div>
-                <div className="bg-accent p-4 rounded-lg border border-border">
+                <div className="bg-accent p-4 rounded-lg border border-green-500/30 backdrop-blur-sm">
                   <label className="text-sm font-medium mb-2 block">✍️ Email Body:</label>
                   <Textarea
                     value={emailBody}
                     onChange={(e) => setEmailBody(e.target.value)}
-                    className="min-h-[250px] bg-background border-border resize-none"
+                    className="min-h-[250px] bg-background border border-green-500/30 backdrop-blur-sm resize-none"
                     placeholder="Your professional follow-up email will appear here..."
                   />
                   <div className="text-xs text-muted-foreground mt-2">
@@ -710,11 +700,15 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     variant="outline"
-                    onClick={() => copyToClipboard(emailBody)}
+                    onClick={() => copyToClipboard(emailBody, 'email')}
                     className="flex-1"
                   >
-                    <Copy className="mr-2" size={16} />
-                    Copy to Clipboard
+                    {copiedStates['email'] ? (
+                          <CheckCircle className="mr-2 text-green-600" size={16} />
+                        ) : (
+                          <Copy className="mr-2" size={16} />
+                        )}
+                    {copiedStates['email'] ? 'Copied!' : 'Copy to Clipboard'}
                   </Button>
                   <Button
                     variant="outline"
@@ -732,7 +726,7 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
               </CardContent>
             </Card>
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

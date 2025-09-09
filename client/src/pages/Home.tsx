@@ -44,6 +44,7 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto"
           >
             <h1 className="text-5xl md:text-7xl font-bold mb-6 text-foreground">
               From AI Curious → AI Confident
@@ -68,9 +69,9 @@ const Home = () => {
                   Get Started <ArrowRight className="ml-2" size={20} />
                 </Button>
               )}
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6" asChild>
-                <a href="/about">Learn More</a>
-              </Button>
+              <a href="/about" className="text-lg text-white hover:text-gray-300 transition-colors flex items-center justify-center">
+                Learn More
+              </a>
             </div>
           </motion.div>
         </div>
@@ -80,32 +81,20 @@ const Home = () => {
       {/* Features Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
               Powerful Features for Modern Teams
             </h2>
             <p className="text-xl text-foreground max-w-2xl mx-auto">
               Everything you need to turn meeting chaos into organized action items
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => {
+            {features.map((feature) => {
               const Icon = feature.icon;
               return (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                >
+                <div key={feature.title}>
                   <Card className="h-full border border-primary/20 bg-black hover:border-primary/40 transition-all duration-300">
                     <CardHeader>
                       <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
@@ -119,7 +108,7 @@ const Home = () => {
                       </CardDescription>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -129,12 +118,7 @@ const Home = () => {
       {/* CTA Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
               Ready to Transform Your Meetings?
             </h2>
@@ -150,7 +134,7 @@ const Home = () => {
                 Start Free Today <ArrowRight className="ml-2" size={20} />
               </Button>
             )}
-          </motion.div>
+          </div>
         </div>
       </section>
     </div>

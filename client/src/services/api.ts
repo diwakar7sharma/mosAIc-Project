@@ -2,10 +2,6 @@
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-// ElevenLabs API Configuration
-const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = import.meta.env.VITE_ELEVENLABS_VOICE_ID || 'jsCqWAovK2LkecY7zXl4';
-const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
 
 // Types
 export interface ActionItem {
@@ -329,86 +325,3 @@ function getMockAnalysis(transcript: string): TranscriptAnalysis {
 
 }
 
-
-// ElevenLabs TTS (Text-to-Speech) - Real implementation
-export async function generateVoiceSummary(text: string): Promise<string> {
-  try {
-    console.log('Generating voice summary with ElevenLabs API...');
-    
-    if (!ELEVENLABS_API_KEY) {
-      console.warn('ElevenLabs API key not found, using mock audio');
-      return 'https://example.com/mock-audio.mp3';
-    }
-
-    const response = await fetch(`${ELEVENLABS_BASE_URL}/${ELEVENLABS_VOICE_ID}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': ELEVENLABS_API_KEY
-      },
-      body: JSON.stringify({
-        text: text,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.5
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.status}`);
-    }
-
-    // Convert response to blob and create URL
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-    
-    console.log('Voice summary generated successfully');
-    return audioUrl;
-  } catch (error) {
-    console.error('Error generating voice summary:', error);
-    // Fallback to mock audio
-    return 'https://example.com/mock-audio.mp3';
-  }
-}
-
-// Helper function to convert AudioBuffer to WAV blob (unused but kept for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function audioBufferToWav(buffer: AudioBuffer): Blob {
-  const length = buffer.length;
-  const arrayBuffer = new ArrayBuffer(44 + length * 2);
-  const view = new DataView(arrayBuffer);
-  const channelData = buffer.getChannelData(0);
-
-  // WAV header
-  const writeString = (offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + length * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, buffer.sampleRate, true);
-  view.setUint32(28, buffer.sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, length * 2, true);
-
-  // Convert float samples to 16-bit PCM
-  let offset = 44;
-  for (let i = 0; i < length; i++) {
-    const sample = Math.max(-1, Math.min(1, channelData[i]));
-    view.setInt16(offset, sample * 0x7FFF, true);
-    offset += 2;
-  }
-
-  return new Blob([arrayBuffer], { type: 'audio/wav' });
-}

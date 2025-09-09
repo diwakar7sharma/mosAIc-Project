@@ -112,16 +112,10 @@ const About = () => {
           <div className="mb-16">
             <h2 className="text-3xl font-bold text-center mb-12 text-foreground">Why Choose Meeting Actioner?</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {features.map((feature, index) => {
+              {features.map((feature) => {
                 const Icon = feature.icon;
                 return (
-                  <motion.div
-                    key={feature.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                  >
+                  <div key={feature.title}>
                     <Card className="h-full border border-primary/20 bg-black hover:border-primary/40 transition-all duration-300">
                       <CardHeader>
                         <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
@@ -135,7 +129,7 @@ const About = () => {
                         </CardDescription>
                       </CardContent>
                     </Card>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

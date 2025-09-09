@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { motion } from 'framer-motion';
 import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay, type DragStartEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -381,11 +380,7 @@ const Tasks = () => {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 bg-background">
       <div className="container mx-auto max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+        <div>
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-4xl font-bold text-foreground flex items-center gap-3">
@@ -499,7 +494,7 @@ const Tasks = () => {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

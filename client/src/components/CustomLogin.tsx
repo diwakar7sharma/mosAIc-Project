@@ -58,7 +58,7 @@ const CustomLogin = () => {
             <Button
               onClick={handleLogin}
               disabled={isLoading}
-              className="w-full bg-green-700 hover:bg-green-800 text-white py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 group"
+              className="w-full py-3 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 group"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

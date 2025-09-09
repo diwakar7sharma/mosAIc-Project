@@ -216,14 +216,35 @@ export class MetricsService {
 
 // Transcript Service
 export class TranscriptService {
-  async createTranscript(transcriptData: Omit<Transcript, '_id' | 'created_at' | 'updated_at'>) {
+  async createTranscript(transcriptData: {
+    user_id: string;
+    title: string;
+    content: string;
+    summary?: string;
+    session_state?: {
+      extractedData?: any;
+      analysis?: any;
+      audioUrl?: string;
+      emailBody?: string;
+    };
+  }) {
     try {
-      const data = await apiCall('/api/transcripts', {
+      const response = await fetch(`${API_BASE_URL}/transcripts`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(transcriptData),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
       return { data, error: null };
     } catch (error) {
+      console.error('Error creating transcript:', error);
       return { data: null, error };
     }
   }
@@ -231,6 +252,15 @@ export class TranscriptService {
   async getTranscriptsByUser(userId: string) {
     try {
       const data = await apiCall(`/api/transcripts/user/${userId}`);
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  async getTranscriptById(transcriptId: string) {
+    try {
+      const data = await apiCall(`/api/transcripts/${transcriptId}`);
       return { data, error: null };
     } catch (error) {
       return { data: null, error };

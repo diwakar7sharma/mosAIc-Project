@@ -90,16 +90,10 @@ const Contact = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {contactInfo.map((info, index) => {
+                  {contactInfo.map((info) => {
                     const Icon = info.icon;
                     return (
-                      <motion.div
-                        key={info.title}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6, delay: index * 0.1 }}
-                        className="flex items-start space-x-4"
-                      >
+                      <div key={info.title} className="flex items-start space-x-4">
                         <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Icon className="text-primary" size={20} />
                         </div>
@@ -117,7 +111,7 @@ const Contact = () => {
                             </a>
                           )}
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </CardContent>
@@ -153,11 +147,7 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   {isSubmitted ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-center py-8"
-                    >
+                    <div className="text-center py-8">
                       <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Send className="text-primary" size={24} />
                       </div>
@@ -165,7 +155,7 @@ const Contact = () => {
                       <p className="text-foreground">
                         Thank you for contacting us. We'll get back to you soon.
                       </p>
-                    </motion.div>
+                    </div>
                   ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

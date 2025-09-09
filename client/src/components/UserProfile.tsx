@@ -26,14 +26,14 @@ const UserProfile = () => {
         <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
           <User size={14} className="text-white" />
         </div>
-        <span className="hidden sm:inline">{user?.email || user?.name || 'User'}</span>
+        <span className="hidden sm:inline max-w-[150px] truncate">{user?.email || user?.name || 'User'}</span>
         <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="absolute right-0 top-full mt-2 w-64 bg-black/90 backdrop-blur-xl border border-white/20 rounded-lg shadow-lg z-50"
+            className="absolute right-0 top-full mt-2 min-w-[280px] max-w-[350px] bg-black/90 backdrop-blur-xl border border-white/20 rounded-lg shadow-lg z-50"
             style={{
               backdropFilter: 'blur(20px) saturate(180%)',
               WebkitBackdropFilter: 'blur(20px) saturate(180%)'
@@ -48,9 +48,9 @@ const UserProfile = () => {
                 <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
                   <User size={20} className="text-white" />
                 </div>
-                <div>
-                  <p className="font-medium text-white">{user?.name || 'User'}</p>
-                  <p className="text-sm text-gray-400">{user?.email}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-white truncate">{user?.name || 'User'}</p>
+                  <p className="text-sm text-gray-400 truncate" title={user?.email}>{user?.email}</p>
                 </div>
               </div>
               

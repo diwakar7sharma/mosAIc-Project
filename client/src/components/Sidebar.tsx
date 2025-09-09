@@ -14,6 +14,12 @@ interface Transcript {
   summary?: string;
   user_id: string;
   created_at?: string;
+  session_state?: {
+    extractedData?: any;
+    analysis?: any;
+    audioUrl?: string;
+    emailBody?: string;
+  };
 }
 
 interface MeetingInsight {
@@ -23,14 +29,33 @@ interface MeetingInsight {
   summary: string;
   user_id: string;
   created_at?: string;
+  decisions?: Array<{
+    text: string;
+    made_by: string;
+    timestamp: string;
+  }>;
+  action_items?: Array<{
+    id: number;
+    task: string;
+    owner: string;
+    due: string;
+    priority: string;
+    context: string;
+    confidence: number;
+  }>;
+  follow_up_email?: {
+    subject: string;
+    body: string;
+  };
 }
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  onResumeSession?: (sessionData: any) => void;
 }
 
-const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSession }) => {
   const { user } = useAuth0();
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [insights, setInsights] = useState<MeetingInsight[]>([]);
@@ -79,22 +104,56 @@ const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
+  const handleTranscriptClick = async (transcript: Transcript) => {
+    if (onResumeSession && transcript.session_state) {
+      onResumeSession(transcript.session_state);
+    }
+  };
+
+  const handleInsightClick = async (insight: MeetingInsight) => {
+    if (onResumeSession) {
+      // Convert insight back to session format
+      const sessionData = {
+        extractedData: {
+          meeting_title: insight.meeting_title,
+          summary: insight.summary,
+          decisions: insight.decisions,
+          action_items: insight.action_items,
+          follow_up_email: insight.follow_up_email
+        },
+        analysis: {
+          meeting_title: insight.meeting_title,
+          summary: insight.summary,
+          decisions: insight.decisions,
+          action_items: insight.action_items,
+          follow_up_email: insight.follow_up_email
+        },
+        emailBody: insight.follow_up_email?.body || ''
+      };
+      onResumeSession(sessionData);
+    }
+  };
+
   return (
     <motion.div
       initial={{ x: isCollapsed ? -260 : 0 }}
       animate={{ x: isCollapsed ? -260 : 0 }}
       transition={{ duration: 0.08, ease: "easeInOut" }}
-      className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-80 bg-card/80 backdrop-blur-xl border-r border-border/50 z-50 overflow-hidden shadow-2xl"
+      className="fixed left-0 top-20 h-[calc(100vh-6rem)] w-80 bg-card/20 backdrop-blur-3xl border border-green-500/20 rounded-r-3xl z-50 overflow-hidden shadow-2xl"
     >
       {/* Toggle Button */}
-      <Button
-        onClick={onToggle}
-        variant="ghost"
-        size="sm"
-        className="absolute -right-3 top-4 z-50 w-6 h-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+      <motion.div
+        whileTap={{ scale: 0.95 }}
+        className="absolute -right-4 top-4 z-50"
       >
-        {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-      </Button>
+        <Button
+          onClick={onToggle}
+          variant="ghost"
+          className="w-8 h-12 rounded-r-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg border-l-4 border-green-500 transition-all duration-200 hover:scale-105"
+        >
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </Button>
+      </motion.div>
 
       <AnimatePresence mode="wait">
         {isCollapsed ? (
@@ -120,7 +179,7 @@ const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="p-4 pt-12 h-full overflow-y-auto"
+            className="p-4 pt-12 h-full overflow-y-auto scrollbar-hide"
           >
             <div className="space-y-6">
               {/* Recent Transcripts */}
@@ -156,6 +215,18 @@ const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
                               <Clock size={10} />
                               {formatDate(transcript.created_at)}
                             </span>
+                          </div>
+                          <div 
+                            className="bg-background/60 backdrop-blur-sm p-2 rounded text-xs leading-relaxed cursor-pointer hover:bg-background/80 transition-colors"
+                            onClick={() => handleTranscriptClick(transcript)}
+                          >
+                            <p className="font-medium text-foreground mb-1">{transcript.title || 'Untitled Meeting'}</p>
+                            <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
+                              <Eye size={10} />
+                              <span>{formatDate(transcript.created_at)}</span>
+                              <Clock size={10} />
+                              <span>{formatDate(transcript.created_at)}</span>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -201,6 +272,18 @@ const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
                               <Clock size={10} />
                               {formatDate(insight.created_at)}
                             </span>
+                          </div>
+                          <div 
+                            className="bg-background/60 backdrop-blur-sm p-2 rounded text-xs leading-relaxed cursor-pointer hover:bg-background/80 transition-colors"
+                            onClick={() => handleInsightClick(insight)}
+                          >
+                            <p className="font-medium text-foreground mb-1">{insight.meeting_title}</p>
+                            <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
+                              <Eye size={10} />
+                              <span>{formatDate(insight.created_at)}</span>
+                              <Clock size={10} />
+                              <span>{formatDate(insight.created_at)}</span>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
