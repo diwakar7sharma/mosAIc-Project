@@ -41,22 +41,22 @@ const Contact = () => {
       icon: Mail,
       title: 'Email Us',
       description: 'Get in touch via email',
-      value: 'hello@meetingactioner.com',
-      action: 'mailto:hello@meetingactioner.com'
+      value: 'diwakar4311@gmail.com',
+      action: 'mailto:diwakar4311@gmail.com'
     },
     {
       icon: MessageSquare,
       title: 'Live Chat',
       description: 'Chat with our support team',
-      value: 'Available 9 AM - 6 PM EST',
+      value: 'Coming soon',
       action: '#'
     },
     {
       icon: Phone,
-      title: 'Phone Support',
-      description: 'Call us for urgent matters',
-      value: '+1 (555) 123-4567',
-      action: 'tel:+15551234567'
+      title: 'Contact Us',
+      description: 'Connect with us on LinkedIn',
+      value: 'LinkedIn Profile',
+      action: 'https://www.linkedin.com/in/diwakar7sharma/'
     }
   ];
 
@@ -135,9 +135,7 @@ const Contact = () => {
                   <div className="space-y-2 text-sm">
                     <p className="font-medium text-foreground">Meeting Actioner HQ</p>
                     <p className="text-foreground">
-                      123 Innovation Drive<br />
-                      San Francisco, CA 94105<br />
-                      United States
+                      Diwakar's Brain and his couch
                     </p>
                   </div>
                 </CardContent>

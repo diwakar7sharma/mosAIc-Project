@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw } from 'lucide-react';
+import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { analyzeTranscript, generateVoiceSummary, type ActionItem } from '@/services/api';
-import { taskService, metricsService, type UserMetrics, subscribeToUserMetrics } from '@/lib/mongoClient';
+import { taskService, metricsService, transcriptService, insightService, type UserMetrics, subscribeToUserMetrics } from '@/lib/mongoClient';
 import { calculateTimeSaved, extractMeetingDuration } from '@/utils/timeCalculations';
 import SpeechWaveAnimation from '@/components/SpeechWaveAnimation';
+import Sidebar from '@/components/Sidebar';
 
 interface Decision {
   text: string;
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const [generatingAudio, setGeneratingAudio] = useState(false);
   const [emailBody, setEmailBody] = useState('');
   const [userStats, setUserStats] = useState<UserMetrics | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -167,7 +169,37 @@ const Dashboard = () => {
       setAnalysis(analysis);
       setEmailBody(analysis.follow_up_email?.body || '');
       
-      // Update metrics in Supabase
+      // Save transcript and insights to MongoDB if user is authenticated
+      if (isAuthenticated && userId) {
+        try {
+          // Save transcript
+          const transcriptData = {
+            user_id: userId,
+            title: analysis.meeting_title,
+            content: transcript,
+            summary: analysis.summary
+          };
+          await transcriptService.createTranscript(transcriptData);
+          
+          // Save insights
+          const insightData = {
+            user_id: userId,
+            transcript_id: 'temp', // We'll update this later when we have proper IDs
+            meeting_title: analysis.meeting_title,
+            summary: analysis.summary,
+            decisions: analysis.decisions,
+            action_items: analysis.action_items,
+            follow_up_email: analysis.follow_up_email
+          };
+          await insightService.createInsight(insightData);
+          
+          console.log('Transcript and insights saved to MongoDB');
+        } catch (saveError) {
+          console.error('Error saving to MongoDB:', saveError);
+        }
+      }
+      
+      // Update metrics
       try {
         await metricsService.incrementMetric(userId, 'transcripts_analyzed', 1);
         await metricsService.incrementMetric(userId, 'ai_insights_generated', 1);
@@ -250,7 +282,7 @@ const Dashboard = () => {
       // Add tasks to Supabase (this will automatically update metrics)
       try {
         console.log('Creating multiple tasks:', tasksToAdd);
-        const { data, error } = await taskService.createMultipleTasks(tasksToAdd);
+        const { data, error } = await taskService.createMultipleTasks(tasksToAdd, userId);
         if (error) {
           console.error('Error adding tasks to database:', error);
           alert(`Failed to add tasks: ${(error as any)?.message || JSON.stringify(error)}`);
@@ -317,15 +349,60 @@ const Dashboard = () => {
     { icon: CheckCircle, label: 'Tasks Created', value: userStats?.tasks_created?.toString() || '0', color: 'text-orange-400' }
   ];
 
+  // Non-authenticated user warning
+  const UnauthenticatedWarning = () => (
+    <Card className="mb-8 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <AlertTriangle className="text-yellow-500 mt-1 flex-shrink-0" size={24} />
+          <div>
+            <h3 className="font-bold text-foreground mb-2 text-lg">🚨 Hold up, fellow human! 🤖</h3>
+            <p className="text-foreground mb-3">
+              Your brilliant progress is floating in the digital void like a lost sock! 🧦✨ 
+              Without joining our awesome crew, your transcripts, insights, and all that juicy AI magic 
+              will vanish faster than pizza at a developer meetup! 🍕💨
+            </p>
+            <p className="text-muted-foreground text-sm mb-4">
+              Join us to save your progress, access your history, and unlock the full power of Meeting Actioner! 
+              Plus, you'll get a shiny sidebar to show off your past transcripts. Pretty neat, right? 😎
+            </p>
+            <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg">
+              🚀 Join the Party (It's Free!)
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 bg-background">
-      <div className="container mx-auto max-w-7xl">
+    <div className="min-h-screen bg-background relative">
+      {/* Overlay for darkening effect */}
+      {isAuthenticated && !isSidebarCollapsed && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.08 }}
+          className="fixed inset-0 bg-black z-40"
+        />
+      )}
+      
+      {/* Sidebar */}
+      {isAuthenticated && (
+        <Sidebar 
+          isCollapsed={isSidebarCollapsed} 
+          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+      )}
+      
+      <div className="container mx-auto px-4 pt-20 pb-8 max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="text-center mb-12">
+          <div className="text-center mb-6">
             <h1 className="text-4xl font-bold mb-4 text-foreground">
               Meeting Dashboard
             </h1>
@@ -335,8 +412,11 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-lg">Transform your meeting transcripts into actionable insights</p>
           </div>
 
+          {/* Show warning for non-authenticated users */}
+          {!isAuthenticated && <UnauthenticatedWarning />}
+
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 max-w-6xl mx-auto">
             {statsData.map((stat, index) => {
               const Icon = stat.icon;
               return (
@@ -347,13 +427,13 @@ const Dashboard = () => {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                 >
                   <Card className="bg-card border-border hover:bg-accent/50 transition-all duration-300">
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-muted-foreground">{stat.label}</p>
-                          <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                          <p className="text-xs text-muted-foreground">{stat.label}</p>
+                          <p className="text-xl font-bold text-foreground">{stat.value}</p>
                         </div>
-                        <Icon className="w-8 h-8 text-primary" />
+                        <Icon className="w-6 h-6 text-primary" />
                       </div>
                     </CardContent>
                   </Card>
@@ -362,7 +442,7 @@ const Dashboard = () => {
             })}
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
             {/* Input Section */}
             <Card className="bg-card border-border">
               <CardHeader>

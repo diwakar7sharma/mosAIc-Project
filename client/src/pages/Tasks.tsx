@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { motion } from 'framer-motion';
-import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay, type DragStartEvent } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay, type DragStartEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -22,6 +22,21 @@ const columns: Column[] = [
   { id: 'In Progress', title: 'In Progress', color: 'bg-yellow-500' },
   { id: 'Done', title: 'Done', color: 'bg-green-500' },
 ];
+
+// Droppable Column Component
+const DroppableColumn = ({ column, children }: { column: Column; children: React.ReactNode }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <div ref={setNodeRef} className={`transition-colors duration-200 ${
+      isOver ? 'bg-primary/5 border-primary/20' : ''
+    }`}>
+      {children}
+    </div>
+  );
+};
 
 const TaskCard = ({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string) => void; onEdit: (task: Task) => void }) => {
   const {
@@ -234,13 +249,35 @@ const Tasks = () => {
 
   const updateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
     try {
-      const { error } = await taskService.updateTaskStatus(taskId, newStatus);
-      if (error) throw error;
+      console.log(`Updating task ${taskId} to status: ${newStatus}`);
+      
+      // Optimistically update UI first
       setTasks((prev) =>
         prev.map((task) => ((task.id || task._id) === taskId ? { ...task, status: newStatus } : task))
       );
+      
+      // Then update in database
+      const { error } = await taskService.updateTaskStatus(taskId, newStatus);
+      if (error) {
+        console.error('Database update failed, reverting UI:', error);
+        // Revert the optimistic update if database update fails
+        setTasks((prev) =>
+          prev.map((task) => {
+            if ((task.id || task._id) === taskId) {
+              // Find the original status and revert
+              const originalTask = tasks.find(t => (t.id || t._id) === taskId);
+              return originalTask ? { ...task, status: originalTask.status } : task;
+            }
+            return task;
+          })
+        );
+        throw error;
+      }
+      
+      console.log(`Task ${taskId} successfully updated to ${newStatus}`);
     } catch (error) {
-      console.error('Error updating task:', error);
+      console.error('Error updating task status:', error);
+      alert('Failed to update task status. Please try again.');
     }
   };
 
@@ -258,11 +295,18 @@ const Tasks = () => {
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
+    setActiveTask(null); // Clear the active task
 
-    if (!over) return;
+    if (!over) {
+      console.log('Drag ended outside of droppable area');
+      return;
+    }
 
     const activeTask = tasks.find((task) => (task.id || task._id) === active.id);
-    if (!activeTask) return;
+    if (!activeTask) {
+      console.log('Active task not found');
+      return;
+    }
 
     let newStatus: Task['status'];
     switch (over.id) {
@@ -276,11 +320,15 @@ const Tasks = () => {
         newStatus = 'done';
         break;
       default:
+        console.log('Invalid drop target:', over.id);
         return;
     }
 
     if (activeTask.status !== newStatus) {
+      console.log(`Moving task "${activeTask.title}" from ${activeTask.status} to ${newStatus}`);
       updateTaskStatus(activeTask.id || activeTask._id || active.id, newStatus);
+    } else {
+      console.log('Task dropped in same column, no update needed');
     }
   };
 
@@ -382,8 +430,8 @@ const Tasks = () => {
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {columns.map((column) => (
-                <div key={column.id}>
-                  <Card className="bg-card border-border">
+                <DroppableColumn key={column.id} column={column}>
+                  <Card className="bg-card border-border h-full">
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between text-foreground">
                         <span className="flex items-center gap-2">
@@ -401,7 +449,7 @@ const Tasks = () => {
                       <SortableContext items={getTasksByStatus(column.id).map((task) => task.id || task._id || '')} strategy={verticalListSortingStrategy}>
                         <div className="space-y-3 min-h-[200px] group">
                           {getTasksByStatus(column.id).map((task) => (
-                            <div key={task.id} className="group">
+                            <div key={task.id || task._id} className="group">
                               <TaskCard task={task} onDelete={deleteTask} onEdit={handleEditTask} />
                             </div>
                           ))}
@@ -414,7 +462,7 @@ const Tasks = () => {
                       </SortableContext>
                     </CardContent>
                   </Card>
-                </div>
+                </DroppableColumn>
               ))}
             </div>
 

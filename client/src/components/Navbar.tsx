@@ -19,9 +19,15 @@ const Navbar = () => {
     { name: 'Contact', path: '/contact', icon: Mail, public: true },
   ];
 
-  const filteredNavItems = navItems.filter(item => 
-    item.public || isAuthenticated
-  );
+  const filteredNavItems = navItems.filter(item => {
+    if (isAuthenticated) {
+      // For authenticated users, hide Home page
+      return item.name !== 'Home';
+    } else {
+      // For unauthenticated users, show only public pages
+      return item.public;
+    }
+  });
 
   return (
     <motion.nav
@@ -38,7 +44,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center space-x-2 flex-shrink-0">
             <span className="font-bold text-green-600 text-lg" style={{ fontFamily: 'Noto Sans Symbols, sans-serif' }}>
               Meeting Actioner
             </span>
