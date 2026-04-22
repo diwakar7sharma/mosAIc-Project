@@ -33,6 +33,7 @@
 
 ### 📧 **Professional Communication**
 - **Auto-Generated Emails**: AI-crafted follow-up emails with proper formatting
+- **Direct Email Sending**: Integrated with EmailJS for seamless delivery
 - **Editable Content**: Customize email content before sending
 - **Copy-to-Clipboard**: Easy sharing and distribution
 - **Professional Templates**: Business-ready email formatting
@@ -54,6 +55,7 @@
 - **Clerk React SDK** for authentication
 - **React Router** for navigation
 - **@dnd-kit** for drag-and-drop functionality
+- **@emailjs/browser** for contact form integration
 
 ### Backend
 - **Node.js** with Pure HTTP Server and TypeScript
@@ -73,6 +75,7 @@ Before running this project, make sure you have:
 - **Clerk** account (free tier available)
 - **Google Gemini API** key (free tier available)
 - **ElevenLabs API** key (premium service)
+- **EmailJS** account and API keys (free tier available)
 
 ## 🚀 Quick Start
 
@@ -132,13 +135,15 @@ MONGODB_URI=your-mongodb-connection-string
 
 **client/.env**:
 ```env
-# Google Gemini Configuration
-VITE_GOOGLE_GEMINI_API_KEY=your-gemini-api-key
-NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY=your-gemini-api-key
+# API Configuration
+VITE_API_URL=http://localhost:3001
 
-# ElevenLabs Configuration
-VITE_ELEVENLABS_API_KEY=your-elevenlabs-api-key
-VITE_ELEVENLABS_VOICE_ID=wWWn96OtTHu1sn8SRGEr
+# Clerk Configuration
+VITE_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
+
+# EmailJS Configuration
+VITE_EMAILJS_PUBLIC_KEY=your-emailjs-public-key
+VITE_EMAILJS_TEMPLATE_ID=your-emailjs-template-id
 ```
 
 ### 5. Run the Application
@@ -232,8 +237,8 @@ npm run install:all     # Install all dependencies
 ### API Endpoints
 
 **Core Functionality:**
-- `POST /api/extract` - Extract insights from meeting transcript
-- `POST /api/tts` - Generate voice summary from text
+- `POST /api/ai/extract` - Securely proxies transcript to Gemini AI
+- `POST /api/ai/tts` - Securely proxies text to ElevenLabs TTS
 - `GET /health` - Health check endpoint
 
 **Task Management:**
@@ -263,9 +268,8 @@ npm run install:all     # Install all dependencies
 2. Set environment variables in deployment dashboard:
    - `VITE_CLERK_PUBLISHABLE_KEY`
    - `VITE_API_URL`
-   - `VITE_GOOGLE_GEMINI_API_KEY`
-   - `VITE_ELEVENLABS_API_KEY`
-   - `VITE_ELEVENLABS_VOICE_ID`
+   - `VITE_EMAILJS_PUBLIC_KEY`
+   - `VITE_EMAILJS_TEMPLATE_ID`
 3. Deploy automatically on push to main branch
 
 ### Backend (Render/Railway/Heroku)
