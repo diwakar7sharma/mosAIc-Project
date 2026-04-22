@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useUser } from '@clerk/clerk-react';
 import { ArrowRight, Mic, Brain, CheckCircle, Mail, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Home = () => {
-  const { loginWithRedirect, isAuthenticated } = useAuth0();
+  const { isSignedIn: isAuthenticated } = useUser();
 
   const features = [
     {
@@ -64,9 +64,9 @@ const Home = () => {
                 <Button 
                   size="lg" 
                   className="text-lg px-8 py-6 text-black"
-                  onClick={() => loginWithRedirect()}
+                  asChild
                 >
-                  Get Started <ArrowRight className="ml-2" size={20} />
+                  <a href="/login">Get Started <ArrowRight className="ml-2" size={20} /></a>
                 </Button>
               )}
               <a href="/about" className="text-lg text-white hover:text-gray-300 transition-colors flex items-center justify-center">
@@ -123,15 +123,15 @@ const Home = () => {
               Ready to Transform Your Meetings?
             </h2>
             <p className="text-xl text-foreground mb-8 max-w-2xl mx-auto">
-              Join thousands of teams already using Meeting Actioner to stay organized and productive.
+              Join thousands of teams already using Wrpup to stay organized and productive.
             </p>
             {!isAuthenticated && (
               <Button 
                 size="lg" 
                 className="text-lg px-8 py-6 text-black"
-                onClick={() => loginWithRedirect()}
+                asChild
               >
-                Start Free Today <ArrowRight className="ml-2" size={20} />
+                <a href="/login">Start Free Today <ArrowRight className="ml-2" size={20} /></a>
               </Button>
             )}
           </div>

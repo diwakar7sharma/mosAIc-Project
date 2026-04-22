@@ -1,7 +1,7 @@
 import http from 'http';
 import url from 'url';
 import dotenv from 'dotenv';
-import OpenAI from 'openai';
+
 import { connectDB } from './config/database';
 import { handleTaskRoutes } from './routes/tasks';
 import { handleMetricsRoutes } from './routes/metrics';
@@ -19,10 +19,7 @@ connectDB();
 const PORT = process.env.PORT || 3003;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// OpenAI configuration
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+
 
 // CORS headers helper
 const setCORSHeaders = (res: http.ServerResponse) => {

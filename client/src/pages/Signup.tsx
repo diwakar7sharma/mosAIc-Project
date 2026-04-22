@@ -1,7 +1,7 @@
-import { SignIn, useUser } from '@clerk/clerk-react';
+import { SignUp, useUser } from '@clerk/clerk-react';
 import { Navigate } from 'react-router-dom';
 
-const Login = () => {
+const Signup = () => {
   const { isSignedIn, isLoaded } = useUser();
 
   if (!isLoaded) {
@@ -24,9 +24,9 @@ const Login = () => {
         </h1>
         <p className="text-muted-foreground">Transform meetings into actionable insights</p>
       </div>
-      <SignIn routing="path" path="/login" signUpUrl="/signup" />
+      <SignUp routing="path" path="/signup" signInUrl="/login" />
     </div>
   );
 };
 
-export default Login;
+export default Signup;

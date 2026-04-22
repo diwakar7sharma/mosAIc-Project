@@ -31,5 +31,5 @@ export async function testGeminiAPI() {
 
 // Auto-run test when this module is imported
 if (typeof window !== 'undefined') {
-  window.testGeminiAPI = testGeminiAPI;
+  (window as any).testGeminiAPI = testGeminiAPI;
 }

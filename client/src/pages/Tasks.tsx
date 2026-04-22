@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useUser } from '@clerk/clerk-react';
 import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay, type DragStartEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -123,14 +123,14 @@ const TaskCard = ({ task, onDelete, onEdit }: { task: Task; onDelete: (id: strin
 };
 
 const Tasks = () => {
-  const { isAuthenticated, user } = useAuth0();
+  const { isSignedIn: isAuthenticated, user } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  // Load tasks from Supabase
+  // Load tasks from MongoDB
   useEffect(() => {
     if (isAuthenticated && user) {
       loadTasks();
@@ -139,7 +139,7 @@ const Tasks = () => {
 
   const loadTasks = async () => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) {
         console.log('No user ID found, skipping task load');
         setLoading(false);
@@ -173,14 +173,14 @@ const Tasks = () => {
     if (!taskData.title.trim()) return;
 
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) return;
       
       const newTaskData = {
         user_id: userId,
         title: taskData.title,
         description: taskData.description,
-        assigned_to: taskData.owner || user?.name || user?.email || 'Unassigned',
+        assigned_to: taskData.owner || user?.fullName || user?.primaryEmailAddress?.emailAddress || 'Unassigned',
         due_date: taskData.due_date || undefined,
         priority: taskData.priority,
         status: 'todo' as const,

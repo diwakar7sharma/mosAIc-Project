@@ -29,13 +29,13 @@ const About = () => {
   const technologies = [
     { name: 'Google Gemini', description: 'For intelligent text analysis and extraction' },
     { name: 'ElevenLabs', description: 'For high-quality voice synthesis' },
-    { name: 'Auth0', description: 'For secure authentication and user management' },
+    { name: 'Clerk', description: 'For secure authentication and user management' },
     { name: 'React & TypeScript', description: 'For a modern, type-safe frontend experience' },
     { name: 'Node.js & Express', description: 'For a robust and scalable backend API' }
   ];
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4">
+    <div className="min-h-screen pt-32 pb-20 px-4">
       <div className="container mx-auto max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -45,7 +45,7 @@ const About = () => {
           {/* Hero Section */}
           <div className="text-center mb-16">
             <h1 className="text-5xl font-bold mb-6 text-foreground">
-              About Meeting Actioner
+              About Wrpup
             </h1>
             <p className="text-xl text-foreground max-w-3xl mx-auto">
               We're on a mission to transform how teams handle meeting follow-ups. 
@@ -110,7 +110,7 @@ const About = () => {
 
           {/* Features */}
           <div className="mb-16">
-            <h2 className="text-3xl font-bold text-center mb-12 text-foreground">Why Choose Meeting Actioner?</h2>
+            <h2 className="text-3xl font-bold text-center mb-12 text-foreground">Why Choose Wrpup?</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {features.map((feature) => {
                 const Icon = feature.icon;
@@ -188,7 +188,7 @@ const About = () => {
               <span className="text-primary">•</span>
               <span>ElevenLabs Voice AI</span>
               <span className="text-primary">•</span>
-              <span>Auth0 Authentication</span>
+              <span>Clerk Authentication</span>
               <span className="text-primary">•</span>
               <span>Vercel Deployment</span>
             </div>

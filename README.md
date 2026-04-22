@@ -118,8 +118,7 @@ AUTH0_ISSUER_BASE_URL=https://your-domain.auth0.com
 
 **client/.env**:
 ```env
-VITE_AUTH0_DOMAIN=your-domain.auth0.com
-VITE_AUTH0_CLIENT_ID=your-auth0-client-id
+VITE_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 ```
 
 ### 4. API Keys Configuration
@@ -133,7 +132,7 @@ GOOGLE_GEMINI_API_KEY=your-gemini-api-key
 
 # ElevenLabs Configuration
 ELEVENLABS_API_KEY=your-elevenlabs-api-key
-ELEVENLABS_VOICE_ID=XrExE9yKIg1WjnnlVkGX
+ELEVENLABS_VOICE_ID=wWWn96OtTHu1sn8SRGEr
 
 # MongoDB Configuration
 MONGODB_URI=your-mongodb-connection-string
@@ -147,7 +146,7 @@ NEXT_PUBLIC_GOOGLE_GEMINI_API_KEY=your-gemini-api-key
 
 # ElevenLabs Configuration
 VITE_ELEVENLABS_API_KEY=your-elevenlabs-api-key
-VITE_ELEVENLABS_VOICE_ID=XrExE9yKIg1WjnnlVkGX
+VITE_ELEVENLABS_VOICE_ID=wWWn96OtTHu1sn8SRGEr
 ```
 
 ### 5. Run the Application
@@ -360,7 +359,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Custom Voice Selection
 Update the `ELEVENLABS_VOICE_ID` in your environment files to use different voices:
-- `XrExE9yKIg1WjnnlVkGX` - Default professional voice
+- `wWWn96OtTHu1sn8SRGEr` - Default professional voice
 - `nPczCjzI2devNBz1zQrb` - Alternative voice option
 - Visit [ElevenLabs Voice Library](https://elevenlabs.io/app/voice-library) for more options
 

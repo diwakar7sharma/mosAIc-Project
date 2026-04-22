@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://diwakar4311:Diwa%4063071@cluster0.vndwzuo.mongodb.net/mosaic-project?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mosaic-project';
 
 async function clearAllData() {
   try {
@@ -9,7 +9,7 @@ async function clearAllData() {
     console.log('✅ Connected to MongoDB');
 
     const db = mongoose.connection.db;
-    
+
     // Get all collections
     const collections = await db.listCollections().toArray();
     console.log('📋 Found collections:', collections.map(c => c.name));
@@ -22,7 +22,7 @@ async function clearAllData() {
     }
 
     console.log('✨ All data cleared successfully! Schema and structure intact.');
-    
+
   } catch (error) {
     console.error('❌ Error clearing data:', error);
   } finally {

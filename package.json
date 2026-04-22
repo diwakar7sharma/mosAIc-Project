@@ -11,8 +11,8 @@
     "start": "cd server && npm start",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install"
   },
-  "keywords": ["meeting", "ai", "transcript", "tasks", "voice", "openai", "elevenlabs"],
-  "author": "Meeting Actioner Team",
+  "keywords": ["meeting", "ai", "transcript", "tasks", "voice", "elevenlabs"],
+  "author": "Wrpup Team",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -7,7 +7,7 @@ export interface ITask extends Document {
   priority: 'low' | 'medium' | 'high';
   assigned_to?: string;
   due_date?: Date;
-  user_id: string; // Auth0 user ID or email
+  user_id: string; // Clerk user ID or email
   created_at: Date;
   updated_at: Date;
 }

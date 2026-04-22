@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useUser } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw, AlertTriangle, Volume2 } from 'lucide-react';
+import { FileText, Upload, BarChart3, Mail, Clock, Users, CheckCircle, Mic, Brain, Zap, Copy, Plus, RotateCcw, AlertTriangle, Volume2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +30,7 @@ interface ExtractedData {
 }
 
 const Dashboard = () => {
-  const { isAuthenticated, user } = useAuth0();
+  const { isSignedIn: isAuthenticated, user } = useUser();
   const [transcript, setTranscript] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
@@ -41,6 +41,17 @@ const Dashboard = () => {
   const [userStats, setUserStats] = useState<UserMetrics | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isGeneratingSpeech, setIsGeneratingSpeech] = useState(false);
+  const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (audioInstance) {
+        audioInstance.pause();
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, [audioInstance]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -48,7 +59,7 @@ const Dashboard = () => {
       loadPersistedState();
       
       // Set up real-time metrics subscription
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (userId) {
         const subscription = subscribeToUserMetrics(userId, (payload) => {
           console.log('Metrics updated:', payload);
@@ -72,7 +83,7 @@ const Dashboard = () => {
 
   const loadPersistedState = () => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) return;
       
       const savedState = localStorage.getItem(`dashboard_state_${userId}`);
@@ -95,7 +106,7 @@ const Dashboard = () => {
 
   const saveStateToStorage = () => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) return;
       
       const state = {
@@ -118,7 +129,7 @@ const Dashboard = () => {
 
   const loadUserMetrics = async () => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) return;
       
       const { data, error } = await metricsService.getUserMetrics(userId);
@@ -137,7 +148,7 @@ const Dashboard = () => {
 
     setIsLoading(true);
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) {
         console.error('User not authenticated');
         return;
@@ -145,8 +156,8 @@ const Dashboard = () => {
 
       console.log('Starting transcript analysis...');
       const userInfo = {
-        name: user?.name || user?.given_name || user?.nickname || 'User',
-        email: user?.email || ''
+        name: user?.fullName || 'User',
+        email: user?.primaryEmailAddress?.emailAddress || ''
       };
       const analysis = await analyzeTranscript(transcript, userInfo);
       console.log('Analysis completed:', analysis);
@@ -239,7 +250,7 @@ const Dashboard = () => {
     
     // Clear persisted state from localStorage
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (userId) {
         localStorage.removeItem(`dashboard_state_${userId}`);
         console.log('Dashboard state cleared from localStorage');
@@ -252,15 +263,30 @@ const Dashboard = () => {
   const handleGenerateSpeech = async () => {
     if (!analysis?.summary) return;
     
+    if (isPlaying || isGeneratingSpeech) {
+      handleStopSpeech();
+      return;
+    }
+    
     setIsGeneratingSpeech(true);
     try {
       const audioUrl = await generateSpeech(analysis.summary);
       if (audioUrl) {
-        // Create audio element and play immediately
         const audio = new Audio(audioUrl);
+        setAudioInstance(audio);
+        setIsPlaying(true);
+        audio.onended = () => {
+          setIsPlaying(false);
+          setAudioInstance(null);
+        };
         audio.play();
       } else {
-        alert('Failed to generate speech. Please check your ElevenLabs API key.');
+        const utterance = new SpeechSynthesisUtterance(analysis.summary);
+        utterance.onend = () => {
+          setIsPlaying(false);
+        };
+        window.speechSynthesis.speak(utterance);
+        setIsPlaying(true);
       }
     } catch (error) {
       console.error('Error generating speech:', error);
@@ -268,6 +294,17 @@ const Dashboard = () => {
     } finally {
       setIsGeneratingSpeech(false);
     }
+  };
+
+  const handleStopSpeech = () => {
+    if (audioInstance) {
+      audioInstance.pause();
+      audioInstance.currentTime = 0;
+      setAudioInstance(null);
+    }
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsGeneratingSpeech(false);
   };
 
   const handleResumeSession = (sessionData: any) => {
@@ -294,7 +331,7 @@ const Dashboard = () => {
 
   const handleAddTasksToBoard = async (actionItems: ActionItem[]) => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) {
         console.error('User not authenticated');
         return;
@@ -312,7 +349,7 @@ const Dashboard = () => {
 
       console.log('Adding tasks to board:', tasksToAdd);
 
-      // Add tasks to Supabase (this will automatically update metrics)
+      // Add tasks to MongoDB (this will automatically update metrics)
       try {
         console.log('Creating multiple tasks:', tasksToAdd);
         const { data, error } = await taskService.createMultipleTasks(tasksToAdd, userId);
@@ -338,7 +375,7 @@ const Dashboard = () => {
 
   const handleAddSingleTask = async (actionItem: ActionItem) => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) {
         console.error('User not authenticated');
         return;
@@ -375,7 +412,7 @@ const Dashboard = () => {
   const statsData = [
     { icon: FileText, label: 'Transcripts Analyzed', value: userStats?.transcripts_analyzed?.toString() || '0', color: 'text-blue-400' },
     { icon: BarChart3, label: 'AI Insights Generated', value: userStats?.ai_insights_generated?.toString() || '0', color: 'text-green-400' },
-    { icon: Clock, label: 'Hours Saved', value: userStats?.hours_saved?.toString() || '0', color: 'text-purple-400' },
+    { icon: Clock, label: 'Minutes Saved', value: userStats?.hours_saved ? (Number(userStats.hours_saved) * 60).toFixed(2) : '0.00', color: 'text-purple-400' },
     { icon: CheckCircle, label: 'Tasks Created', value: userStats?.tasks_created?.toString() || '0', color: 'text-orange-400' }
   ];
 
@@ -393,7 +430,7 @@ const Dashboard = () => {
               will vanish faster than pizza at a developer meetup! 🍕💨
             </p>
             <p className="text-muted-foreground text-sm mb-4">
-              Join us to save your progress, access your history, and unlock the full power of Meeting Actioner! 
+              Join us to save your progress, access your history, and unlock the full power of Wrpup! 
               Plus, you'll get a shiny sidebar to show off your past transcripts. Pretty neat, right? 😎
             </p>
             <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg">
@@ -569,12 +606,13 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                       <div className="absolute top-2 right-2 flex gap-1">
                         <button
                           onClick={handleGenerateSpeech}
-                          disabled={isGeneratingSpeech}
                           className="p-1 hover:bg-accent rounded transition-colors"
-                          title="Play speech"
+                          title={isPlaying ? "Stop speech" : "Play speech"}
                         >
                           {isGeneratingSpeech ? (
                             <Brain size={16} className="text-primary animate-spin" />
+                          ) : isPlaying ? (
+                            <Square size={16} className="text-red-500 hover:text-red-600" />
                           ) : (
                             <Volume2 size={16} className="text-muted-foreground hover:text-foreground" />
                           )}

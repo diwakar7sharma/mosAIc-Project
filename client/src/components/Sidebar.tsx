@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useUser } from '@clerk/clerk-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, MessageSquare, Sparkles, Clock, FileText, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSession }) => {
-  const { user } = useAuth0();
+  const { user } = useUser();
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [insights, setInsights] = useState<MeetingInsight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSessio
 
   const loadData = async () => {
     try {
-      const userId = user?.email || user?.sub;
+      const userId = user?.primaryEmailAddress?.emailAddress || user?.id;
       if (!userId) return;
 
       const [transcriptsResult, insightsResult] = await Promise.all([

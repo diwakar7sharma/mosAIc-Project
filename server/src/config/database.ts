@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://diwakar4311:Diwa%4063071@cluster0.vndwzuo.mongodb.net/mosaic-project?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mosaic-project';
 
 export const connectDB = async () => {
   try {

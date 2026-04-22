@@ -61,7 +61,7 @@ const Contact = () => {
   ];
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4">
+    <div className="min-h-screen pt-32 pb-20 px-4">
       <div className="container mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -74,7 +74,7 @@ const Contact = () => {
               Get in Touch
             </h1>
             <p className="text-xl text-foreground max-w-2xl mx-auto">
-              Have questions about Meeting Actioner? We'd love to hear from you. 
+              Have questions about Wrpup? We'd love to hear from you. 
               Send us a message and we'll respond as soon as possible.
             </p>
           </div>
@@ -127,7 +127,7 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm">
-                    <p className="font-medium text-foreground">Meeting Actioner HQ</p>
+                    <p className="font-medium text-foreground">Wrpup HQ</p>
                     <p className="text-foreground">
                       Diwakar's Brain and his couch
                     </p>

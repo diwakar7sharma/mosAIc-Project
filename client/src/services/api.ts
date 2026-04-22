@@ -1,10 +1,10 @@
 // Gemini API Configuration
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY;
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 // ElevenLabs API Configuration
 const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = import.meta.env.VITE_ELEVENLABS_VOICE_ID || 'XrExE9yKIg1WjnnlVkGX';
+const ELEVENLABS_VOICE_ID = import.meta.env.VITE_ELEVENLABS_VOICE_ID || 'wWWn96OtTHu1sn8SRGEr';
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 
 // ElevenLabs Text-to-Speech Function
@@ -26,7 +26,7 @@ export async function generateSpeech(text: string): Promise<string | null> {
       },
       body: JSON.stringify({
         text: text,
-        model_id: 'eleven_monolingual_v1',
+        model_id: 'eleven_multilingual_v2',
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.5
