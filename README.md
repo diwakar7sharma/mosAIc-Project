@@ -1,8 +1,8 @@
-# 🎯 Meeting Actioner - AI-Powered Meeting Intelligence
+# 🎯 Wrpup - AI-Powered Meeting Intelligence
 
 > Transform your meeting transcripts into actionable insights with cutting-edge AI analysis, intelligent task extraction, and premium voice summaries.
 
-**Meeting Actioner** is a comprehensive web application that revolutionizes how teams handle meeting follow-ups. By leveraging Google Gemini AI and ElevenLabs voice synthesis, it automatically converts raw meeting transcripts into structured insights, actionable tasks, and professional communications.
+**Wrpup** is a comprehensive web application that revolutionizes how teams handle meeting follow-ups. By leveraging Google Gemini AI and ElevenLabs voice synthesis, it automatically converts raw meeting transcripts into structured insights, actionable tasks, and professional communications.
 
 ## ✨ Key Features
 
@@ -38,7 +38,7 @@
 - **Professional Templates**: Business-ready email formatting
 
 ### 🔐 **Enterprise-Grade Security**
-- **Auth0 Authentication**: Secure user management with Google and email login
+- **Clerk Authentication**: Secure user management with Google and email login
 - **User Data Isolation**: All data scoped to individual user accounts
 - **MongoDB Integration**: Secure data persistence with proper access controls
 - **API Protection**: Authenticated endpoints with proper error handling
@@ -51,14 +51,14 @@
 - **TailwindCSS** for styling
 - **shadcn/ui** for beautiful components
 - **Framer Motion** for smooth animations
-- **Auth0 React SDK** for authentication
+- **Clerk React SDK** for authentication
 - **React Router** for navigation
 - **@dnd-kit** for drag-and-drop functionality
 
 ### Backend
 - **Node.js** with Pure HTTP Server and TypeScript
 - **MongoDB** with Mongoose for data persistence
-- **Auth0** for authentication middleware
+- **Clerk** for authentication middleware
 - **Google Gemini API** for advanced transcript analysis
 - **ElevenLabs API** for premium text-to-speech
 - **CORS** and comprehensive security middleware
@@ -70,7 +70,7 @@ Before running this project, make sure you have:
 - **Node.js 18+** installed
 - **npm** or yarn package manager
 - **MongoDB Atlas** account (free tier available)
-- **Auth0** account (free tier available)
+- **Clerk** account (free tier available)
 - **Google Gemini API** key (free tier available)
 - **ElevenLabs API** key (premium service)
 
@@ -96,24 +96,16 @@ cp .env.example server/.env
 cp .env.example client/.env
 ```
 
-### 3. Configure Auth0
+### 3. Configure Clerk
 
-1. Go to [Auth0 Dashboard](https://manage.auth0.com/)
-2. Create a new application (Single Page Application)
-3. Configure the following settings:
-   - **Allowed Callback URLs**: `http://localhost:5173`
-   - **Allowed Logout URLs**: `http://localhost:5173`
-   - **Allowed Web Origins**: `http://localhost:5173`
-   - **Allowed Origins (CORS)**: `http://localhost:5173`
-
-4. Update your environment files with Auth0 credentials:
+1. Go to [Clerk Dashboard](https://dashboard.clerk.com/)
+2. Create a new application
+3. Configure your sign-in options (Email, Google, etc.)
+4. Update your environment files with Clerk credentials:
 
 **server/.env**:
 ```env
-AUTH0_SECRET=your-32-character-secret
-AUTH0_CLIENT_ID=your-auth0-client-id
-AUTH0_CLIENT_SECRET=your-auth0-client-secret
-AUTH0_ISSUER_BASE_URL=https://your-domain.auth0.com
+CLERK_SECRET_KEY=your-clerk-secret-key
 ```
 
 **client/.env**:
@@ -163,7 +155,7 @@ This will start:
 ## 📖 Usage Guide
 
 ### 1. Authentication
-- Click "Login" to authenticate with Auth0
+- Click "Login" to authenticate with Clerk
 - Use Google login or email/password
 - Dashboard and Tasks pages require authentication
 
@@ -269,8 +261,7 @@ npm run install:all     # Install all dependencies
 ### Frontend (Vercel/Netlify)
 1. Connect your GitHub repository to Vercel or Netlify
 2. Set environment variables in deployment dashboard:
-   - `VITE_AUTH0_DOMAIN`
-   - `VITE_AUTH0_CLIENT_ID`
+   - `VITE_CLERK_PUBLISHABLE_KEY`
    - `VITE_API_URL`
    - `VITE_GOOGLE_GEMINI_API_KEY`
    - `VITE_ELEVENLABS_API_KEY`
@@ -281,10 +272,7 @@ npm run install:all     # Install all dependencies
 1. Deploy to your preferred Node.js hosting platform
 2. Configure environment variables:
    - `MONGODB_URI`
-   - `AUTH0_SECRET`
-   - `AUTH0_CLIENT_ID`
-   - `AUTH0_CLIENT_SECRET`
-   - `AUTH0_ISSUER_BASE_URL`
+   - `CLERK_SECRET_KEY`
    - `GOOGLE_GEMINI_API_KEY`
    - `ELEVENLABS_API_KEY`
    - `ELEVENLABS_VOICE_ID`
@@ -294,7 +282,7 @@ npm run install:all     # Install all dependencies
 
 ## 🔒 Security Features
 
-- **Auth0 Authentication**: Secure user management
+- **Clerk Authentication**: Secure user management
 - **API Protection**: All API routes require authentication
 - **Rate Limiting**: Prevents API abuse
 - **CORS Configuration**: Secure cross-origin requests
@@ -318,7 +306,7 @@ npm run install:all     # Install all dependencies
 ## 🔄 Workflow
 
 1. **Record/Transcribe** your meeting using any tool
-2. **Paste** the transcript into Meeting Actioner
+2. **Paste** the transcript into Wrpup
 3. **Analyze** with AI to extract insights automatically
 4. **Listen** to voice summaries for quick review
 5. **Manage** tasks in the Kanban board
@@ -380,7 +368,7 @@ The application uses the following MongoDB collections:
 
 - **Google** for Gemini AI API
 - **ElevenLabs** for premium voice synthesis
-- **Auth0** for enterprise authentication
+- **Clerk** for enterprise authentication
 - **MongoDB** for reliable data persistence
 - **Vercel** for seamless deployment
 - **shadcn/ui** for beautiful component library

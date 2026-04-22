@@ -17,11 +17,8 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center pt-32 pb-20 px-4">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-green-600 mb-2" style={{ fontFamily: 'Noto Sans Symbols, sans-serif' }}>
-          Wrpup
-        </h1>
         <p className="text-muted-foreground">Transform meetings into actionable insights</p>
       </div>
       <SignIn routing="path" path="/login" signUpUrl="/signup" />
