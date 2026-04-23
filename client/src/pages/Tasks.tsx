@@ -22,15 +22,14 @@ const columns: Column[] = [
   { id: 'Done', title: 'Done', color: 'bg-green-500' },
 ];
 
-// Droppable Column Component
 const DroppableColumn = ({ column, children }: { column: Column; children: React.ReactNode }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
 
   return (
-    <div ref={setNodeRef} className={`transition-colors duration-200 ${
-      isOver ? 'bg-primary/5 border-primary/20' : ''
+    <div ref={setNodeRef} className={`h-full transition-colors duration-200 ${
+      isOver ? 'bg-primary/5 border-primary/20 rounded-xl ring-2 ring-primary/20' : ''
     }`}>
       {children}
     </div>
@@ -307,20 +306,32 @@ const Tasks = () => {
       return;
     }
 
-    let newStatus: Task['status'];
-    switch (over.id) {
-      case 'To Do':
-        newStatus = 'todo';
-        break;
-      case 'In Progress':
-        newStatus = 'in_progress';
-        break;
-      case 'Done':
-        newStatus = 'done';
-        break;
-      default:
-        console.log('Invalid drop target:', over.id);
-        return;
+    let newStatus: Task['status'] | undefined;
+    
+    // Check if we dropped over a column directly
+    if (['To Do', 'In Progress', 'Done'].includes(over.id)) {
+      switch (over.id) {
+        case 'To Do':
+          newStatus = 'todo';
+          break;
+        case 'In Progress':
+          newStatus = 'in_progress';
+          break;
+        case 'Done':
+          newStatus = 'done';
+          break;
+      }
+    } else {
+      // We might have dropped over another task
+      const overTask = tasks.find((task) => (task.id || task._id) === over.id);
+      if (overTask) {
+        newStatus = overTask.status;
+      }
+    }
+
+    if (!newStatus) {
+      console.log('Invalid drop target:', over.id);
+      return;
     }
 
     if (activeTask.status !== newStatus) {
@@ -426,7 +437,7 @@ const Tasks = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {columns.map((column) => (
                 <DroppableColumn key={column.id} column={column}>
-                  <Card className="bg-card border-border h-full">
+                  <Card className="bg-card border-border h-full flex flex-col">
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between text-foreground">
                         <span className="flex items-center gap-2">
@@ -440,9 +451,9 @@ const Tasks = () => {
                         </span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 flex flex-col">
                       <SortableContext items={getTasksByStatus(column.id).map((task) => task.id || task._id || '')} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-3 min-h-[200px] group">
+                        <div className="space-y-3 flex-1 min-h-[200px] group">
                           {getTasksByStatus(column.id).map((task) => (
                             <div key={task.id || task._id} className="group">
                               <TaskCard task={task} onDelete={deleteTask} onEdit={handleEditTask} />

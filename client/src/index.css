@@ -38,36 +38,59 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     margin: 0;
     padding: 0;
   }
-  
+
   /* Hide scrollbars globally */
   * {
-    -ms-overflow-style: none;  /* Internet Explorer 10+ */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    /* Firefox */
   }
+
   *::-webkit-scrollbar {
-    display: none;  /* Safari and Chrome */
+    display: none;
+    /* Safari and Chrome */
   }
 }
 
 /* Speech to text animation */
 @keyframes speechWave {
-  0%, 100% { transform: scaleY(0.5); }
-  50% { transform: scaleY(1); }
+
+  0%,
+  100% {
+    transform: scaleY(0.5);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
 }
 
 .speech-wave {
   animation: speechWave 1.5s ease-in-out infinite;
 }
 
-.speech-wave:nth-child(2) { animation-delay: 0.2s; }
-.speech-wave:nth-child(3) { animation-delay: 0.4s; }
-.speech-wave:nth-child(4) { animation-delay: 0.6s; }
-.speech-wave:nth-child(5) { animation-delay: 0.8s; }
+.speech-wave:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.speech-wave:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.speech-wave:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.speech-wave:nth-child(5) {
+  animation-delay: 0.8s;
+}
 
 /* Text overflow prevention */
 .text-overflow-ellipsis {
@@ -84,11 +107,15 @@
 
 /* Hide scrollbars */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  /* Firefox */
 }
+
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Safari and Chrome */
+  display: none;
+  /* Safari and Chrome */
 }
 
 /* Custom font family for buttons */
@@ -103,7 +130,7 @@
   display: none !important;
 }
 
-div[class*="cl-internal-"] > a[href*="clerk.com"],
-div[class*="cl-internal-"] > a[href*="clerk.dev"] {
+div[class*="cl-internal-"]>a[href*="clerk.com"],
+div[class*="cl-internal-"]>a[href*="clerk.dev"] {
   display: none !important;
 }

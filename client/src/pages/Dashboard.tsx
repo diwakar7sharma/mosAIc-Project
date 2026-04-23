@@ -464,7 +464,7 @@ const Dashboard = () => {
         />
       )}
       
-      <div className={`container mx-auto px-4 pt-20 pb-8 max-w-7xl transition-all duration-200 ${!isSidebarCollapsed ? 'blur-sm' : ''}`}>
+      <div className={`container mx-auto pt-20 pb-8 max-w-7xl transition-all duration-200 ${isAuthenticated ? 'px-4 pl-[76px] 2xl:px-4' : 'px-4'} ${!isSidebarCollapsed ? 'blur-sm' : ''}`}>
         <div>
           <div className="text-center mb-6">
             <h1 className="text-4xl font-bold mb-4 text-foreground">
@@ -805,12 +805,12 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                     onClick={() => {
                       const subject = encodeURIComponent(extractedData.follow_up_email.subject);
                       const body = encodeURIComponent(emailBody);
-                      window.open(`mailto:?subject=${subject}&body=${body}`);
+                      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
                     }}
                     className="flex-1"
                   >
                     <Mail className="mr-2" size={16} />
-                    Open Email Client
+                    Open in Gmail
                   </Button>
                 </div>
               </CardContent>

@@ -131,10 +131,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onResumeSessio
 
   return (
     <motion.div
-      initial={{ x: isCollapsed ? -260 : 0 }}
-      animate={{ x: isCollapsed ? -260 : 0 }}
+      initial={{ x: isCollapsed ? "calc(-100% + 60px)" : 0 }}
+      animate={{ x: isCollapsed ? "calc(-100% + 60px)" : 0 }}
       transition={{ duration: 0.08, ease: "easeInOut" }}
-      className="fixed left-0 top-20 h-[calc(100vh-6rem)] w-80 bg-card/20 backdrop-blur-3xl border border-green-500/20 rounded-r-3xl z-50 overflow-hidden shadow-2xl"
+      className="fixed left-0 top-20 h-[calc(100vh-6rem)] w-[85vw] sm:w-80 bg-card/20 backdrop-blur-3xl border border-green-500/20 rounded-r-3xl z-50 overflow-hidden shadow-2xl"
     >
       {/* Toggle Button */}
       <motion.div

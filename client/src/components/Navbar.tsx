@@ -69,9 +69,9 @@ const Navbar = () => {
                   <Link
                     key={item.name}
                     to={item.path}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-full transition-all duration-200 ${isActive
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-full transition-all duration-200 focus:outline-none ${isActive
                         ? 'bg-green-600/20 text-green-400 border border-green-500/30'
-                        : 'text-white/80 hover:text-white hover:bg-white/10'
+                        : 'text-white/80 hover:text-white hover:bg-white/10 border border-transparent'
                       } ${isScrolled ? 'px-2 py-1 text-sm' : 'px-3 py-2'}`}
                   >
                     <Icon size={isScrolled ? 14 : 16} />
@@ -123,9 +123,9 @@ const Navbar = () => {
                     <Link
                       key={item.name}
                       to={item.path}
-                      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                          ? 'bg-green-600/20 text-green-400'
-                          : 'text-white/80 hover:text-white hover:bg-white/10'
+                      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 focus:outline-none ${isActive
+                          ? 'bg-green-600/20 text-green-400 border border-green-500/30'
+                          : 'text-white/80 hover:text-white hover:bg-white/10 border border-transparent'
                         }`}
                       onClick={() => setIsOpen(false)}
                     >
@@ -178,9 +178,9 @@ const Navbar = () => {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${isActive
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none ${isActive
                       ? 'bg-primary/20 text-primary border border-primary/30'
-                      : 'text-foreground/80 hover:text-foreground hover:bg-white/10'
+                      : 'text-foreground/80 hover:text-foreground hover:bg-white/10 border border-transparent'
                     }`}
                 >
                   <Icon size={18} />
@@ -229,9 +229,9 @@ const Navbar = () => {
                   <Link
                     key={item.name}
                     to={item.path}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
-                        ? 'bg-primary/20 text-primary'
-                        : 'text-foreground/80 hover:text-foreground hover:bg-white/10'
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 focus:outline-none ${isActive
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'text-foreground/80 hover:text-foreground hover:bg-white/10 border border-transparent'
                       }`}
                     onClick={() => setIsOpen(false)}
                   >
