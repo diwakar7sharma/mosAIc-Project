@@ -336,17 +336,6 @@ npm run install:all     # Install all dependencies
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🎨 Screenshots
-
-### Dashboard - AI Analysis
-![Dashboard showing AI-powered meeting analysis with voice synthesis]()
-
-### Task Management - Kanban Board
-![Drag-and-drop task management with real-time updates]()
-
-### User Metrics - Analytics Dashboard
-![Comprehensive productivity tracking and time savings]()
-
 ## 🔧 Advanced Configuration
 
 ### Custom Voice Selection
