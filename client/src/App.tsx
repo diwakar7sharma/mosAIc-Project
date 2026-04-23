@@ -31,7 +31,14 @@ function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ClerkProvider 
+      publishableKey={PUBLISHABLE_KEY}
+      appearance={{
+        layout: {
+          unsafe_disableDevelopmentModeWarnings: true,
+        },
+      }}
+    >
       <Router>
         <div className="min-h-screen bg-background">
           <Navbar />
