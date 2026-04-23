@@ -96,3 +96,14 @@
   font-family: 'Inter', sans-serif;
 }
 
+/* Hide Clerk Branding & Development Mode warnings */
+.cl-internal-b3alnn,
+.cl-internal-1dauvpw,
+.cl-userButtonPopoverFooter {
+  display: none !important;
+}
+
+div[class*="cl-internal-"] > a[href*="clerk.com"],
+div[class*="cl-internal-"] > a[href*="clerk.dev"] {
+  display: none !important;
+}
