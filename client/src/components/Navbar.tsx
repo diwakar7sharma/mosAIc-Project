@@ -70,8 +70,8 @@ const Navbar = () => {
                     key={item.name}
                     to={item.path}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-full transition-all duration-200 focus:outline-none ${isActive
-                        ? 'bg-green-600/20 text-green-400 border border-green-500/30'
-                        : 'text-white/80 hover:text-white hover:bg-white/10 border border-transparent'
+                        ? 'bg-green-600/20 text-green-400 ring-1 ring-inset ring-green-500/30'
+                        : 'text-white/80 hover:text-white hover:bg-white/10'
                       } ${isScrolled ? 'px-2 py-1 text-sm' : 'px-3 py-2'}`}
                   >
                     <Icon size={isScrolled ? 14 : 16} />
@@ -124,8 +124,8 @@ const Navbar = () => {
                       key={item.name}
                       to={item.path}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 focus:outline-none ${isActive
-                          ? 'bg-green-600/20 text-green-400 border border-green-500/30'
-                          : 'text-white/80 hover:text-white hover:bg-white/10 border border-transparent'
+                          ? 'bg-green-600/20 text-green-400 ring-1 ring-inset ring-green-500/30'
+                          : 'text-white/80 hover:text-white hover:bg-white/10'
                         }`}
                       onClick={() => setIsOpen(false)}
                     >
@@ -179,8 +179,8 @@ const Navbar = () => {
                   key={item.name}
                   to={item.path}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none ${isActive
-                      ? 'bg-primary/20 text-primary border border-primary/30'
-                      : 'text-foreground/80 hover:text-foreground hover:bg-white/10 border border-transparent'
+                      ? 'bg-primary/20 text-primary ring-1 ring-inset ring-primary/30'
+                      : 'text-foreground/80 hover:text-foreground hover:bg-white/10'
                     }`}
                 >
                   <Icon size={18} />
@@ -230,8 +230,8 @@ const Navbar = () => {
                     key={item.name}
                     to={item.path}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 focus:outline-none ${isActive
-                        ? 'bg-primary/20 text-primary border border-primary/30'
-                        : 'text-foreground/80 hover:text-foreground hover:bg-white/10 border border-transparent'
+                        ? 'bg-primary/20 text-primary ring-1 ring-inset ring-primary/30'
+                        : 'text-foreground/80 hover:text-foreground hover:bg-white/10'
                       }`}
                     onClick={() => setIsOpen(false)}
                   >

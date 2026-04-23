@@ -812,6 +812,18 @@ Today we discussed the Q4 budget. John will review the proposal by Friday. Sarah
                     <Mail className="mr-2" size={16} />
                     Open in Gmail
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const subject = encodeURIComponent(extractedData.follow_up_email.subject);
+                      const body = encodeURIComponent(emailBody);
+                      window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
+                    }}
+                    className="flex-1"
+                  >
+                    <Mail className="mr-2" size={16} />
+                    Open in Email App
+                  </Button>
                 </div>
               </CardContent>
             </Card>
